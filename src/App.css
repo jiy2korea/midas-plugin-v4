@@ -1,0 +1,382 @@
+/* 전체 플러그인 컨테이너 */
+.plugin-container {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 12px;
+  padding: 10px;
+  background-color: #f0f0f0;
+  width: 700px;
+  margin: 0 auto;
+}
+
+/* Fieldset 스타일 */
+.section-fieldset {
+  border: 1px solid #999;
+  padding: 10px;
+  margin-bottom: 10px;
+  background-color: #f5f5f5;
+}
+
+.section-fieldset legend {
+  font-weight: normal;
+  padding: 0 5px;
+  color: #333;
+}
+
+/* 부재 이름 표시 */
+.member-name {
+  padding: 5px 10px;
+  font-size: 13px;
+  color: #333;
+}
+
+/* 부재 선택 드롭다운 */
+.member-select {
+  width: 100%;
+  height: 28px;
+  padding: 4px 8px;
+  font-size: 13px;
+  border: 1px solid #999;
+  background-color: white;
+  cursor: pointer;
+}
+
+.member-select:hover {
+  border-color: #666;
+}
+
+.member-select:focus {
+  outline: none;
+  border-color: #0078d4;
+}
+
+/* Additional Informations 컨테이너 */
+.additional-info-container {
+  display: flex;
+  gap: 20px;
+}
+
+.info-left,
+.info-right {
+  flex: 1;
+}
+
+.info-left {
+  border-right: 1px solid #ccc;
+  padding-right: 15px;
+}
+
+/* 왼쪽 영역 테이블 레이아웃 */
+.info-table-left {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.info-table-left td {
+  padding: 3px 5px;
+  vertical-align: middle;
+}
+
+.info-table-left .label-cell-left-title {
+  text-align: left;
+  white-space: nowrap;
+  color: #333;
+  padding-top: 8px;
+  padding-bottom: 3px;
+}
+
+.info-table-left .label-cell-left {
+  text-align: left;
+  white-space: nowrap;
+  color: #333;
+  width: 50px;
+  padding-left: 15px;
+}
+
+.info-table-left .label-cell-left-sub {
+  text-align: left;
+  white-space: nowrap;
+  color: #333;
+  width: 40px;
+}
+
+.info-table-left .input-cell-left {
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.info-table-left .input-cell-left input[type="text"] {
+  width: 45px;
+  height: 22px;
+  border: 1px solid #999;
+  padding: 2px 4px;
+}
+
+.info-table-left .input-cell-left select {
+  min-width: 60px;
+  height: 24px;
+  border: 1px solid #999;
+}
+
+.info-table-left .unit-cell-left {
+  text-align: left;
+  font-size: 11px;
+  color: #666;
+  width: 30px;
+}
+
+/* 정보 그룹 */
+.info-group {
+  margin-bottom: 15px;
+}
+
+/* 그룹 제목 */
+.info-title {
+  font-weight: normal;
+  margin-bottom: 5px;
+  color: #333;
+}
+
+/* 그룹 내용 (들여쓰기) */
+.info-content {
+  margin-left: 15px;
+}
+
+/* 정보 행 */
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 5px;
+}
+
+.info-row label {
+  min-width: 40px;
+  text-align: right;
+}
+
+.info-row .label-inline {
+  min-width: auto;
+  margin-left: 10px;
+}
+
+.info-row input[type="text"] {
+  width: 60px;
+  height: 22px;
+  border: 1px solid #999;
+  padding: 2px 4px;
+}
+
+.info-row .input-small {
+  width: 40px;
+}
+
+.info-row select {
+  min-width: 60px;
+  height: 24px;
+  border: 1px solid #999;
+}
+
+.separator {
+  font-weight: bold;
+  padding: 0 2px;
+}
+
+.unit {
+  font-size: 11px;
+  color: #666;
+  min-width: 25px;
+}
+
+/* 오른쪽 영역 테이블 레이아웃 */
+.info-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.info-table td {
+  padding: 3px 5px;
+  vertical-align: middle;
+}
+
+.info-table .label-cell-right {
+  text-align: left;
+  white-space: nowrap;
+  width: 60px;
+  color: #333;
+  padding-right: 5px;
+}
+
+.info-table .label-cell-wide {
+  text-align: left;
+  white-space: nowrap;
+  color: #333;
+  padding-right: 5px;
+}
+
+.info-table .label-cell-inline {
+  text-align: left;
+  white-space: nowrap;
+  color: #333;
+  padding-left: 10px;
+}
+
+.info-table .label-cell-sub {
+  text-align: right;
+  white-space: nowrap;
+  color: #333;
+  width: 40px;
+  padding-right: 5px;
+}
+
+.info-table .label-cell-sub-left {
+  text-align: left;
+  white-space: nowrap;
+  color: #333;
+  width: 40px;
+  padding-left: 5px;
+}
+
+.info-table .label-cell-sub-indent {
+  text-align: left;
+  white-space: nowrap;
+  color: #333;
+  padding-left: 20px;
+  width: 100px;
+}
+
+.info-table .input-cell {
+  text-align: left;
+}
+
+.info-table .input-cell select {
+  min-width: 80px;
+  height: 24px;
+  border: 1px solid #999;
+}
+
+.info-table .input-cell input[type="text"] {
+  width: 80px;
+  height: 22px;
+  border: 1px solid #999;
+  padding: 2px 4px;
+}
+
+.info-table .unit-cell {
+  text-align: left;
+  font-size: 11px;
+  color: #666;
+  width: 30px;
+}
+
+.info-table .unit-cell-inline {
+  text-align: left;
+  font-size: 11px;
+  color: #666;
+  padding-left: 5px;
+}
+
+/* Search 버튼 컨테이너 - 필드 바깥쪽 */
+.search-button-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.search-button {
+  padding: 6px 20px;
+  background-color: #e0e0e0;
+  border: 1px solid #999;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.search-button:hover {
+  background-color: #d0d0d0;
+}
+
+.search-button:active {
+  background-color: #c0c0c0;
+}
+
+/* 테이블 컨테이너 */
+.table-container {
+  overflow-x: auto;
+}
+
+/* Section 테이블 */
+.section-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  font-size: 11px;
+}
+
+.section-table th,
+.section-table td {
+  border: 1px solid #999;
+  padding: 4px 6px;
+  text-align: center;
+}
+
+.section-table th {
+  background-color: #e8e8e8;
+  font-weight: normal;
+}
+
+.section-table td {
+  background-color: white;
+}
+
+.section-cell {
+  text-align: left;
+  white-space: nowrap;
+}
+
+.empty-row {
+  color: #999;
+  font-style: italic;
+  padding: 20px;
+}
+
+.selected-row {
+  background-color: #cce5ff !important;
+}
+
+.selected-row td {
+  background-color: #cce5ff !important;
+}
+
+/* 하단 버튼 영역 */
+.bottom-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.action-button {
+  min-width: 80px;
+  padding: 6px 15px;
+  background-color: #e0e0e0;
+  border: 1px solid #999;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.action-button:hover {
+  background-color: #d0d0d0;
+}
+
+.action-button:active {
+  background-color: #c0c0c0;
+}
+
+/* 입력 필드 스타일 개선 */
+input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
