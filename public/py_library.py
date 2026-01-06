@@ -309,3 +309,540 @@ def calculate_section_properties(height, width, thickness):
         'width': width
     }
 
+
+# ============================================================
+# 스플라이스 데이터
+# ============================================================
+
+# H형강 이음 스플라이스 무게(N), 볼트 개수
+HPlateConnectionData = {    
+    'H-150X150X7X10': {'total_weight': 19.13, 'bolt_count': 20},
+    'H-200X200X8X12': {'total_weight': 269.09, 'bolt_count': 32},
+    'H-300X150X6.5X9': {'total_weight': 159.31, 'bolt_count': 24},
+    'H-350X175X7X11': {'total_weight': 245.35, 'bolt_count': 36},
+    'H-390X300X10X16': {'total_weight': 672.18, 'bolt_count': 52},
+    'H-396X199X7X11': {'total_weight': 250.94, 'bolt_count': 34},
+    'H-400X200X8X13': {'total_weight': 289.65, 'bolt_count': 34},
+    'H-404X201X9X15': {'total_weight': 422.91, 'bolt_count': 44},
+    'H-440X300X11X18': {'total_weight': 774.01, 'bolt_count': 68},
+    'H-446X199X8X12': {'total_weight': 279.68, 'bolt_count': 36},
+    'H-450X200X9X14': {'total_weight': 397.50, 'bolt_count': 44},
+    'H-482X300X11X15': {'total_weight': 648.83, 'bolt_count': 60},
+    'H-488X300X11X18': {'total_weight': 829.73, 'bolt_count': 68},
+    'H-496X199X9X14': {'total_weight': 443.12, 'bolt_count': 48},
+    'H-500X200X10X16': {'total_weight': 500.51, 'bolt_count': 48},
+    'H-582X300X12X17': {'total_weight': 894.67, 'bolt_count': 72},
+    'H-588X300X12X20': {'total_weight': 1104.31, 'bolt_count': 80},
+    'H-594X302X14X23': {'total_weight': 1416.47, 'bolt_count': 92},
+    'H-596X199X10X15': {'total_weight': 516.79, 'bolt_count': 52},
+    'H-600X200X11X17': {'total_weight': 624.41, 'bolt_count': 56},
+    'H-606X201X12X20': {'total_weight': 803.93, 'bolt_count': 68},
+    'H-612X202X13X23': {'total_weight': 894.77, 'bolt_count': 68},
+    'H-692X300X13X20': {'total_weight': 1188.68, 'bolt_count': 88},
+    'H-700X300X13X24': {'total_weight': 1480.23, 'bolt_count': 96},
+    'H-708X302X15X28': {'total_weight': 1821.74, 'bolt_count': 108},
+    'H-792X300X14X22': {'total_weight': 1465.61, 'bolt_count': 100},
+    'H-800X300X14X26': {'total_weight': 1797.09, 'bolt_count': 108},
+    'H-808X302X16X30': {'total_weight': 2252.48, 'bolt_count': 120},
+    'H-890X299X15X23': {'total_weight': 1597.75, 'bolt_count': 108},
+    'H-900X300X16X28': {'total_weight': 2304.27, 'bolt_count': 128},
+    'H-912X302X18X34': {'total_weight': 3363.56, 'bolt_count': 156},
+}
+
+
+# ============================================================
+# 판폭두께비 KDS 14 31 10 표 4.3-2
+# ============================================================
+
+class WidthThicknessRatio:
+    """판폭두께비 클래스 - 단면 분류(Compact/NonCompact/Slender)"""
+    coeff_lambda_p = [0, 0.38, 0.38, 0.54, 0.38, 0.84, 3.76, 0, 1.12, 1.12, 2.42, 0.07]
+    coeff_lambda_r = [0, 1.0, 0.95, 0.91, 1.0, 1.52, 5.70, 5.70, 1.40, 1.40, 5.70, 0.31]
+    
+    def __init__(self, width, thickness, elasticModulus, yieldStress, typeNumber):
+        self.lambda_p = self.coeff_lambda_p[typeNumber] * (elasticModulus / yieldStress) ** (1/2)
+        self.lambda_r = self.coeff_lambda_r[typeNumber] * (elasticModulus / yieldStress) ** (1/2)
+        self.wtRatio = width / thickness
+        
+    def check(self):
+        if self.wtRatio <= self.lambda_p:
+            return 'Compact'
+        elif self.wtRatio <= self.lambda_r:
+            return 'NonCompact'
+        else:
+            return 'Slender'
+
+
+# ============================================================
+# 부재력 계산
+# ============================================================
+
+class BeamForceCalculator:
+    """부재력 계산 클래스"""
+    
+    def __init__(self, length):
+        """
+        초기화: 보의 길이를 설정합니다.
+        
+        Args:
+            length (float): 보의 길이 (단위: mm)
+        """
+        self.length = length
+
+    def calculate_forces(self, load_type, support_type, position, **kwargs):
+        """
+        하중 유형, 지지 조건, 특정 위치에서의 모멘트 및 전단력을 계산합니다.
+        
+        Args:
+            load_type (str): 하중 유형. "Uniform" 또는 "Point" 중 하나.
+            support_type (str): 지지 조건. "FixedEnd", "SimpleBeam", "Pin-Fix", "Free-Fix" 중 하나.
+            position (float): 부재력 계산을 위한 위치 (0 <= position <= length).
+            kwargs:
+                - lineLoad (float): 등분포 하중 크기 (kN/m) (load_type이 "Uniform"일 때 필요)
+                - pointLoad (float): 집중하중 크기 (kN) (load_type이 "Point"일 때 필요)
+                - pointLocation (float): 집중하중 위치 (m) (load_type이 "Point"일 때 필요)
+        
+        Returns:
+            dict: 계산된 모멘트와 전단력 (kN, kN·m 단위)
+        """
+        l = self.length
+        
+        if position < 0 or position > l:
+            raise ValueError("position 값은 0과 보의 길이 사이여야 합니다.")
+        
+        if load_type == "Uniform":
+            w = kwargs.get("lineLoad")
+            if w is None:
+                raise ValueError("lineLoad는 Uniform 하중 유형에서 필수입니다.")
+            
+            if support_type == "SimpleBeam":
+                shearForce = w * (l / 2 - position)
+                moment = -w * position / 2 * (l - position)
+            elif support_type == "FixedEnd" or support_type == "Fix-Fix":
+                shearForce = w * (l / 2 - position)
+                moment = -w * position / 2 * (l - position) + (w * l**2 / 12)
+            elif support_type == "Pin-Fix":
+                shearForce = (3/8) * w * l - w * position
+                moment = ((3/8) * w * l) * position - (1/2) * w * position**2
+            elif support_type == "Free-Fix":
+                shearForce = w * position
+                moment = w / 2 * position**2
+            else:
+                raise ValueError(f"지원하지 않는 지지 조건입니다: {support_type}")
+        
+        elif load_type == "Point":
+            p = kwargs.get("pointLoad")
+            a = kwargs.get("pointLocation")
+            if p is None or a is None:
+                raise ValueError("pointLoad와 pointLocation은 Point 하중 유형에서 필수입니다.")
+            b = l - a
+            
+            if support_type == "SimpleBeam":
+                if position <= a:
+                    shearForce = b / l * p
+                    moment = b / l * p * position
+                else:
+                    shearForce = -a / l * p
+                    moment = p * a / l * (l - position)
+            elif support_type == "FixedEnd":
+                if position <= a:
+                    shearForce = p * b**2 / l**3 * (3 * a + b)
+                    moment = -p * a * b**2 / l**2 + shearForce * position
+                else:
+                    shearForce = -p * a**2 / l**3 * (a + 3 * b)
+                    moment = 2 * p * a**2 * b**2 / l**3 + shearForce * position
+            elif support_type == "Pin-Fix":
+                if position <= a:
+                    shearForce = p * b**2 / (2 * l**3) * (3*a + 2*b)
+                    moment = shearForce * position
+                else:
+                    shearForce = -(p - (p * b**2 / (2 * l**3) * (3*a + 2*b)))
+                    moment = p * a * b**2 / (2 * l**3) * (3*a + 2*b) + shearForce * position
+            elif support_type == "Free-Fix":
+                if position <= a:
+                    shearForce = 0
+                    moment = 0
+                else:
+                    shearForce = p
+                    moment = p * position
+            else:
+                raise ValueError(f"지원하지 않는 지지 조건입니다: {support_type}")
+        
+        else:
+            raise ValueError("지원하지 않는 하중 유형입니다. ('Uniform' 또는 'Point' 중 하나를 선택하세요.)")
+        
+        return {
+            "ShearForce": shearForce,
+            "Moment": moment,
+        }
+
+
+# ============================================================
+# 전단연결재 강도
+# ============================================================
+
+def StudAnchorStrength(studAnchorArea, f_ck, concreteElasticModulus, studAnchorStrength):
+    """스터드 전단연결재 강도 KDS 41 30 20 (4.1.8.2)"""
+    unitStrength = min(
+        0.5 * studAnchorArea * (f_ck * concreteElasticModulus) ** (1/2),
+        1.0 * 0.75 * studAnchorArea * studAnchorStrength
+    )
+    return unitStrength
+
+
+def AngleAnchorStrength(height, U_width, f_ck):
+    """앵글 전단연결재 강도 (실험결과 반영)"""
+    unitStrength = 31000 * height ** (3/4) * f_ck ** (2/3) / U_width ** (1/2)
+    return unitStrength
+
+
+# ============================================================
+# 설계강도 함수
+# ============================================================
+
+def DesignMomentStrength(nominalStrength):
+    """설계휨강도 [KDS 14 31 10] 4.3.2.1.1.1"""
+    Cb = 1  # 횡좌굴모멘트수정계수
+    designStrength = 0.9 * Cb * nominalStrength
+    return designStrength
+
+
+def DesignShearStrength(nominalStrength):
+    """설계전단강도 [KDS 14 31 10] 4.3.2.1.2.1"""
+    phi = 0.9
+    designStrength = phi * nominalStrength
+    return designStrength
+
+
+def StrengthCheck(designStrength, requiredStrength):
+    """강도검토 (설계강도 >= 소요강도)"""
+    return designStrength >= requiredStrength
+
+
+def ServiceabilityCheck(capacity, demand):
+    """사용성 검토"""
+    return capacity <= demand
+
+
+# ============================================================
+# 공칭 휨강도 클래스
+# ============================================================
+
+class NominalMomentStrength_2:
+    """
+    강축 휨을 받는 2축대칭 H형강 또는 ㄷ형강 조밀단면 부재
+    [KDS 14 31 10] 4.3.2.1.1.2
+    """
+    
+    def __init__(self, section, Steel_elasticModulus, Steel_yieldStress, unbracedLength):
+        self.elasticMomentStrength = section.sectionModulusX1 * Steel_yieldStress
+        self.plasticMomentStrength = Steel_yieldStress * section.plasticSectionCoefficient
+        self.unbracedLength = unbracedLength
+        self.plasticUnbracedLength = 1.76 * section.radiusGyrationY * (Steel_elasticModulus / Steel_yieldStress) ** (1/2)
+        
+        # 뒤틀림상수
+        C_w = section.height ** 2 * section.inertiaY / 4
+        r_ts = ((section.inertiaY * C_w) ** (1/2) / section.sectionModulusX1) ** (1/2)
+        
+        self.elasticUnbracedLength = (
+            1.95 * r_ts * (Steel_elasticModulus / (0.7 * Steel_yieldStress)) 
+            * (section.torsionalConstant / (section.sectionModulusX1 * section.height)) ** (1/2)
+            * (1 + (1 + 6.76 * ((0.7 * Steel_yieldStress / Steel_elasticModulus) 
+            * (section.sectionModulusX1 * section.height / section.torsionalConstant)) ** 2) ** (1/2)) ** (1/2)
+        )
+        
+        if self.unbracedLength <= self.plasticUnbracedLength:
+            self.lateralBucklingStrength = self.plasticMomentStrength
+        elif self.unbracedLength <= self.elasticUnbracedLength:
+            self.lateralBucklingStrength = (
+                self.plasticMomentStrength 
+                - (self.plasticMomentStrength - 0.7 * Steel_yieldStress * section.sectionModulusX1)
+                * ((self.unbracedLength - self.plasticUnbracedLength) / (self.elasticUnbracedLength - self.plasticUnbracedLength))
+            )
+        else:
+            self.lateralBucklingStrength = self.plasticMomentStrength  # 탄성좌굴 영역 (추후 구현)
+        
+        self.nominalMomentStrength_Positive = min(self.plasticMomentStrength, self.lateralBucklingStrength)
+        self.nominalMomentStrength_Negative = min(self.plasticMomentStrength, self.lateralBucklingStrength)
+
+
+class NominalMomentStrength_6:
+    """
+    약축 휨을 받는 H형강 또는 ㄷ형강 부재
+    [KDS 14 31 10] 4.3.2.1.1.6
+    """
+    
+    def __init__(self, section, flange, Steel_elasticModulus, Steel_yieldStress, direction, typeNumber):
+        sectionModulus = section.sectionModulusX2 if direction == "P" else section.sectionModulusX1
+        self.plasticMomentStrength = Steel_yieldStress * section.plasticSectionCoefficient
+        self.elasticMomentStrength = Steel_yieldStress * sectionModulus
+        self.yieldMomentStrength = (
+            self.plasticMomentStrength 
+            if self.plasticMomentStrength <= 1.6 * self.elasticMomentStrength 
+            else self.elasticMomentStrength
+        )
+        
+        self.flange_WTRatio = WidthThicknessRatio(
+            width=flange.width, 
+            thickness=flange.height, 
+            elasticModulus=Steel_elasticModulus, 
+            yieldStress=Steel_yieldStress, 
+            typeNumber=typeNumber
+        )
+        
+        if self.flange_WTRatio.check() == 'Compact':
+            self.localBucklingStrength = (
+                self.plasticMomentStrength 
+                if self.plasticMomentStrength <= 1.6 * self.elasticMomentStrength 
+                else self.elasticMomentStrength
+            )
+        elif self.flange_WTRatio.check() == 'NonCompact':
+            self.localBucklingStrength = (
+                self.plasticMomentStrength 
+                - (self.plasticMomentStrength - 0.7 * Steel_yieldStress * sectionModulus)
+                * (self.flange_WTRatio.wtRatio - self.flange_WTRatio.lambda_p) 
+                / (self.flange_WTRatio.lambda_r - self.flange_WTRatio.lambda_p)
+            )
+        else:
+            self.localBucklingStrength = (
+                (0.69 * Steel_elasticModulus) / ((flange.width / (2 * flange.height)) ** 2) * sectionModulus
+            )
+        
+        self.nominalMomentStrength = min(self.yieldMomentStrength, self.localBucklingStrength)
+
+
+# ============================================================
+# 공칭 전단강도 클래스
+# ============================================================
+
+class NominalShearStrength:
+    """
+    비보강 또는 보강 웨브를 가진 부재
+    [KDS 14 31 10] 4.3.2.1.2.2
+    """
+    
+    def __init__(self, square, shearArea, yieldStress, elasticModulus):
+        self.slendernessRatio = square.height / square.width
+        k_v = 5  # 전단좌굴계수
+        shearRatio = (k_v * elasticModulus / yieldStress) ** (1/2)
+        self.yieldLimit = 1.1 * shearRatio
+        self.bucklingLimit = 1.37 * shearRatio
+        
+        if self.slendernessRatio <= self.yieldLimit:
+            self.shearCoefficient = 1.0
+        elif self.slendernessRatio <= self.bucklingLimit:
+            self.shearCoefficient = 1.1 * shearRatio / self.slendernessRatio
+        else:
+            self.shearCoefficient = 1.51 * shearRatio ** 2 / self.slendernessRatio ** 2
+        
+        self.shearStrength = 0.6 * yieldStress * shearArea
+        self.nominalShearStrength = self.shearStrength * self.shearCoefficient
+
+
+# ============================================================
+# 합성단면 모멘트 강도
+# ============================================================
+
+def CompositeSectionMomentStrength_positive(**properties):
+    """
+    합성단면 정모멘트 강도
+    KDS 41 30 20 (4.1.3.2) ①정모멘트에 대한 휨강도
+    """
+    C1 = properties["P_y"] + properties["P_rb"]  # 강재+철근의 인장강도
+    C2 = 0.85 * properties["f_ck"] * properties["A_s"]  # 콘크리트 슬래브 압축강도
+    C3 = properties["Q_n"]  # 전단연결재 강도
+    C = min(C1, C2, C3)  # 콘크리트 슬래브의 압축력 산정
+    a = C / (0.85 * properties["f_ck"] * properties["b_eff"])  # 압축블럭의 깊이
+    
+    d1 = properties["d_s"] - a / 2
+    d2 = 0
+    
+    if C1 > C:
+        compressiveAreaInS = (C1 - C) / 2 / properties["F_y"]
+        flangesArea = sum(flange.area for flange in properties["compressiveFlanges"])
+        flangesWidth = sum(flange.width for flange in properties["compressiveFlanges"])
+        flangesThickness = sum(flange.height for flange in properties["compressiveFlanges"]) / len(properties["compressiveFlanges"])
+        websArea = sum(web.area for web in properties["webs"])
+        websWidth = sum(web.width for web in properties.get("webs", []))
+        
+        if compressiveAreaInS < flangesArea:
+            d2 = compressiveAreaInS / flangesWidth / 2
+        elif compressiveAreaInS < (flangesArea + websArea):
+            dw = (compressiveAreaInS - flangesArea) / websWidth
+            d2 = (flangesArea * flangesThickness / 2 + (compressiveAreaInS - flangesArea) * (dw / 2)) / compressiveAreaInS
+    
+    d3 = properties["steelSection"].height - properties["steelSection"].centerY
+    
+    if all(ratio == 'Compact' for ratio in properties["widthThicknessRatio"]):
+        M_n_Composite = (
+            C * (d1 + d2) 
+            + properties["P_y"] * (d3 - d2) 
+            + properties["tensionRebarStrength"] * (properties["steelSection"].height - d2 - 33)
+        )
+    else:
+        # 항복모멘트강도로 계산필요
+        M_n_Composite = (
+            C * (d1 + d2) 
+            + properties["P_y"] * (d3 - d2) 
+            + properties["tensionRebarStrength"] * (properties["steelSection"].height - d2 - 33)
+        )
+    
+    return M_n_Composite
+
+
+def CompositeSectionMomentStrength_Negative(**properties):
+    """
+    합성단면 부모멘트 강도
+    KDS 41 30 20 (4.1.3.2) ②부모멘트에 대한 휨강도
+    """
+    T1 = properties['topRebarStrength']
+    T2 = properties['Qn']
+    T3 = properties['Pyc']
+    T = min(T1, T2)
+    
+    d1 = properties['ds'] - properties['slabCoverConcreteDepth']
+    d2 = 0
+    
+    if T < T3:
+        tensionAreaInS = (T3 - T) / 2 / properties['Fy']
+        flangesArea = sum(flange.area for flange in properties.get('tensileFlanges', []))
+        flangesThickness = sum(flange.height for flange in properties.get('tensileFlanges', [])) / len(properties['tensileFlanges'])
+        websArea = sum(web.area for web in properties.get("webs", []))
+        websWidth = sum(web.width for web in properties.get("webs", []))
+        
+        if tensionAreaInS < flangesArea:
+            d2 = tensionAreaInS / sum(flange.width for flange in properties.get('tensileFlanges', [])) / 2
+        elif tensionAreaInS < (flangesArea + websArea):
+            dw = (tensionAreaInS - flangesArea) / websWidth
+            d2 = (flangesArea * flangesThickness / 2 + (tensionAreaInS - flangesArea) * (dw / 2 + flangesThickness)) / tensionAreaInS
+    
+    d3 = properties["steelSection"].height - properties["steelSection"].centerY
+    
+    if all(ratio == 'Compact' for ratio in properties["widthThicknessRatio"]):
+        nominalMomentStrength_Negative = T * (d1 + d2) + properties["Pyc"] * (d3 - d2)
+    else:
+        # 항복모멘트강도로 계산필요
+        nominalMomentStrength_Negative = T * (d1 + d2) + properties["Pyc"] * (d3 - d2)
+    
+    return nominalMomentStrength_Negative
+
+
+# ============================================================
+# 합성단면 유효단면2차모멘트
+# ============================================================
+
+def EffectiveInertia(steelSectionInertia, compositeRatio, compositeSectionInertia):
+    """불완전합성보 유효단면2차모멘트"""
+    I_equiv = steelSectionInertia + (compositeRatio) ** (1/2) * (compositeSectionInertia - steelSectionInertia)
+    I_eff = 0.75 * I_equiv
+    return I_eff
+
+
+# ============================================================
+# 기타 검토 함수
+# ============================================================
+
+def MinimumRebarSpacingCheck(beamwidth, rebarDiameter, rebarQuantity):
+    """철근 최소순간격 검토"""
+    rebarSpacing = (beamwidth - (10 * 2) - (40 * 2) - rebarDiameter * rebarQuantity) / max(rebarQuantity - 1, 1)
+    if rebarSpacing >= max(25, rebarDiameter, 33):  # 25mm, 철근지름, 굵은골재(25mm)의 4/3
+        return True
+    else:
+        return False
+
+
+def TopFlangeConstructionLoadCheck(thickness, constructionLoad, steelYieldStress):
+    """상부플랜지 시공하중 검토"""
+    inertia_X = 1000 * thickness ** 3 / 12
+    sectionModulus = inertia_X / (thickness / 2)
+    nominalMomentStrength = steelYieldStress * sectionModulus
+    designMomentStrength = DesignMomentStrength(nominalMomentStrength)
+    requiredMomentStrength = constructionLoad * 40
+    return designMomentStrength >= requiredMomentStrength
+
+
+# ============================================================
+# 비용 계산 클래스
+# ============================================================
+
+class CostCalculation:
+    """물량 및 비용 계산 클래스"""
+    
+    def __init__(
+        self,
+        section1_length,
+        section2_length,
+        unitWeight_Section1=0,
+        unitWeight_Section2=0,
+        angleShearConnector_spacing=0,
+        studShearConnector_spacing=0,
+        topRebarDiameter=0,
+        topRebarQuantity=0,
+        bottomRebarDiameter=0,
+        bottomRebarQuantity=0,
+        H_Section_List=None,
+        volumn_concInU=0,
+        overlappedLength=0
+    ):
+        # 전체 보 길이 계산
+        beamLength = section1_length + section2_length
+        
+        # 무게 계산
+        self.weight_Section1 = unitWeight_Section1 * section1_length * 1.07
+        self.weight_Section2 = unitWeight_Section2 * (section2_length + 2 * overlappedLength) * 1.07
+        
+        effective_length = section1_length if section1_length > 0 else section2_length
+        self.angle_weight = (
+            (4.43 * 9.8) * (0.3) * effective_length / angleShearConnector_spacing * 1.07 
+            if angleShearConnector_spacing != 0 else 0
+        )
+        self.stud_number = (
+            math.ceil(effective_length / studShearConnector_spacing) * 2 
+            if studShearConnector_spacing != 0 else 0
+        )
+        
+        # H형강의 플랜지 너비에 따라 곱셈 계수 결정
+        if H_Section_List and H_Section_List != 'none' and H_Section_List != 'Built Up':
+            try:
+                flange_width = int(H_Section_List.split('X')[1])
+                multiplier = 1 if flange_width <= 200 else 2
+            except (IndexError, ValueError):
+                multiplier = 2
+        else:
+            multiplier = 2
+        
+        self.section2_stud_Number = math.ceil(section2_length / 200) * multiplier if section2_length != 0 else 0
+        self.topRebar_weight = 0
+        self.bottomRebar_weight = 0
+        
+        if (
+            H_Section_List
+            and isinstance(H_Section_List, str)
+            and H_Section_List.lower() != 'none'
+            and H_Section_List in HPlateConnectionData
+        ):
+            self.bestoGirderSplice_weight = HPlateConnectionData[H_Section_List]['total_weight'] * 2
+        else:
+            self.bestoGirderSplice_weight = 0
+        
+        if topRebarDiameter and topRebarQuantity:
+            self.topRebar_weight = reBarUnitWeight[int(topRebarDiameter)] * topRebarQuantity * beamLength * 0.6 / 1000 * 1.07
+        if bottomRebarDiameter and bottomRebarQuantity:
+            self.bottomRebar_weight = reBarUnitWeight[int(bottomRebarDiameter)] * bottomRebarQuantity * beamLength * 0.6 / 1000 * 1.07
+        
+        # 비용 계산
+        self.Section1_cost = self.weight_Section1 / 9800 * 1150000  # 톤당 115만원
+        self.Section2_cost = self.weight_Section2 / 9800 * 1200000  # 톤당 120만원
+        self.angle_cost = self.angle_weight / 9800 * 1100000  # 톤당 110만원
+        self.stud_cost = (self.stud_number + self.section2_stud_Number) * 650  # 개당 650원
+        self.topRebar_cost = self.topRebar_weight / 9800 * 1100000  # 톤당 110만원
+        self.bottomRebar_cost = self.bottomRebar_weight / 9800 * 1100000  # 톤당 110만원
+        self.bestoGirderSplice_cost = self.bestoGirderSplice_weight / 9800 * 1150000  # 톤당 115만원
+
+        self.steel_cost = (
+            self.Section1_cost + self.Section2_cost + self.angle_cost 
+            + self.stud_cost + self.topRebar_cost + self.bottomRebar_cost 
+            + self.bestoGirderSplice_cost
+        )
+        self.conc_cost = volumn_concInU / 10**9 * 100000  # m³당 10만원
+        self.totalCost = self.steel_cost + self.conc_cost
