@@ -5,6 +5,9 @@
 
 import React, { useState } from 'react';
 import './App.css';
+import { getMemberStressData, getMemberGeometryData } from './data/memberData';
+import { performCalculation, CalculationInput } from './utils/calculation';
+import { checkPyScriptReady } from './utils_pyscript';
 
 // H형강 리스트 (match_list.tsv 기반)
 const H_SECTION_LIST = [
@@ -49,46 +52,182 @@ interface SectionData {
 }
 
 const App = () => {
-  // 선택된 부재 이름
-  const [selectedMember, setSelectedMember] = useState(H_SECTION_LIST[0]);
+  // 선택된 부재 이름 (기본값: H-600X200X11X17)
+  const [selectedMember, setSelectedMember] = useState('H-600X200X11X17');
 
   // Additional Informations 상태
   // 철근 - 개수와 지름
-  const [rebarTopCount, setRebarTopCount] = useState('');
-  const [rebarTopDia, setRebarTopDia] = useState('');
-  const [rebarBotCount, setRebarBotCount] = useState('');
-  const [rebarBotDia, setRebarBotDia] = useState('');
-  const [fYr, setFYr] = useState('');
+  const [rebarTopCount, setRebarTopCount] = useState('0');
+  const [rebarTopDia, setRebarTopDia] = useState('D25');
+  const [rebarBotCount, setRebarBotCount] = useState('0');
+  const [rebarBotDia, setRebarBotDia] = useState('D25');
+  const [fYr, setFYr] = useState('600');
   
   // 전단연결재 - 간격
-  const [studSpacing, setStudSpacing] = useState('');
-  const [angleSpacing, setAngleSpacing] = useState('');
+  const [studSpacing, setStudSpacing] = useState('200');
+  const [angleSpacing, setAngleSpacing] = useState('200');
 
   // 오른쪽 영역
-  const [fYU, setFYU] = useState('');
-  const [fYH, setFYH] = useState('');
-  const [concrete, setConcrete] = useState('');
-  const [slabDs, setSlabDs] = useState('');
-  const [slabBeff, setSlabBeff] = useState('');
-  const [support, setSupport] = useState('');
+  const [fYU, setFYU] = useState('SM355');
+  const [fYH, setFYH] = useState('SM355');
+  const [concrete, setConcrete] = useState('C30');
+  const [slabDs, setSlabDs] = useState('150');
+  const [slabBeff, setSlabBeff] = useState('10000');
+  const [support, setSupport] = useState('미사용');
 
   // Section List 상태
   const [sectionList, setSectionList] = useState<SectionData[]>([]);
   const [selectedSectionIndex, setSelectedSectionIndex] = useState<number | null>(null);
 
   // Search Satisfied Section 버튼 핸들러
-  const handleSearch = () => {
-    // 예시 데이터 - 실제로는 Pyscript를 통해 계산된 데이터
-    const mockData: SectionData[] = [
-      {
-        section: 'H-600x300x11x12\nU-400x350x7',
-        chk: 'OK',
+  const handleSearch = async () => {
+    try {
+      // 1. 드롭다운에서 선택한 단면 정보 가져오기
+      const stressData = getMemberStressData(selectedMember);
+      const geometryData = getMemberGeometryData(selectedMember);
+
+      // 2. Python 함수에 전달할 입력 데이터 준비
+      const pythonInput = {
+        selectedMember,
+        h_bracket_length: 1700, // 기본값 (필요시 UI에서 입력받도록 수정 가능)
+        rebarTopCount,
+        rebarTopDia,
+        rebarBotCount,
+        rebarBotDia,
+        fYr,
+        studSpacing,
+        angleSpacing,
+        fYU,
+        fYH,
+        steelU: fYU || undefined, // 강종 정보 전달
+        steelH: fYH || undefined, // 강종 정보 전달
+        concrete,
+        slabDs,
+        bay_spacing1: parseFloat(slabBeff) / 2 || 3000, // slabBeff를 2로 나눔
+        bay_spacing2: parseFloat(slabBeff) / 2 || 3000,
+        endCondition: 'Fix-Fix', // 기본값
+        beamSupport: support === '미사용' ? '0' : '1',
+        usageForVibration: '사무실', // 기본값 (필요시 UI에서 입력받도록 수정 가능)
+        liveLoadConstruction: '2.5', // 기본값
+        deadLoadFinish: '1.5', // 기본값
+        liveLoadPermanent: '2.5', // 기본값
+        span_length: geometryData.length * 1000, // m -> mm 변환
+      };
+
+      // 3. Python 함수 호출
+      const result = await new Promise<any>((resolve, reject) => {
+        checkPyScriptReady(() => {
+          try {
+            const pyFunc = pyscript.interpreter.globals.get('calculate_design_strength');
+            if (pyFunc) {
+              const resultStr = pyFunc(JSON.stringify(pythonInput));
+              const result = JSON.parse(resultStr);
+              resolve(result);
+            } else {
+              reject(new Error('Python function calculate_design_strength not found'));
+            }
+          } catch (error) {
+            reject(error);
+          }
+        });
+      });
+
+      // 4. 에러 체크
+      if (result.error) {
+        console.error('Python 계산 오류:', result.error);
+        alert(`계산 중 오류가 발생했습니다: ${result.error}`);
+        return;
+      }
+
+      // 5. 결과 출력
+      console.log('========================================');
+      console.log('Python 설계강도 계산 결과');
+      console.log('========================================');
+      console.log('전체 결과:', result);
+      console.log('섹션 정보:', result.sectionInfo);
+      console.log('시공단계:', result.constructionStage);
+      console.log('합성단계:', result.compositeStage);
+      console.log('비용:', result.cost);
+      console.log('전체 검토:', result.overallCheck);
+      console.log('========================================');
+
+      // 6. UI 업데이트 (결과를 테이블에 표시)
+      const sectionData: SectionData[] = [{
+        section: `${result.sectionInfo?.hSection || selectedMember}\n${result.sectionInfo?.uSection || ''}`,
+        chk: result.overallCheck || 'NG',
         selected: false,
-        beforeComposite: { mEnd: 0.7, mMid: 0.8, v: 0.6 },
-        afterComposite: { mEnd: 0.7, mMid: 0.8, v: 0.6 },
-      },
-    ];
-    setSectionList(mockData);
+        beforeComposite: {
+          mEnd: result.constructionStage?.H_negative?.requiredStrength || 0,
+          mMid: result.constructionStage?.U_positive?.requiredStrength || 0,
+          v: result.constructionStage?.U_shear?.requiredStrength || 0,
+        },
+        afterComposite: {
+          mEnd: result.compositeStage?.H_negative?.requiredStrength || 0,
+          mMid: result.compositeStage?.U_positive?.requiredStrength || 0,
+          v: result.compositeStage?.shear?.requiredStrength || 0,
+        },
+      }];
+      setSectionList(sectionData);
+
+      // 7. 결과를 test 폴더에 저장 (탭으로 구분된 데이터 파일)
+      saveResultsToFile(result, pythonInput);
+
+    } catch (error) {
+      console.error('계산 중 오류가 발생했습니다:', error);
+      alert(`계산 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  // 결과를 파일로 저장하는 함수
+  const saveResultsToFile = (result: any, pythonInput: any) => {
+    try {
+      // 저장할 데이터 순서:
+      // 1. U section area
+      // 2. U section positive design moment strength. Construction
+      // 3. H section area
+      // 4. H section inertia X
+      // 5. H section modulusX1
+      // 6. H section negative design moment strength. Construction
+      // 7. steel_E
+      // 8. steel_Fy_H
+      // 9. H_length
+      // 10. H section shear design strength. Construction
+
+      const data = [
+        result.sectionInfo?.uArea || 0,
+        result.constructionStage?.U_positive?.designStrength || 0,
+        result.sectionInfo?.hArea || 0,
+        result.sectionInfo?.hInertia || 0,
+        result.sectionInfo?.hModulusX1 || 0,
+        result.constructionStage?.H_negative?.designStrength || 0,
+        result.materialInfo?.steelE || 0,
+        result.materialInfo?.steelFyH || 0,
+        pythonInput?.h_bracket_length || 0,
+        result.constructionStage?.H_shear?.designStrength || 0,
+      ];
+
+      // 줄바꿈으로 구분된 데이터 생성
+      const content = data.join('\n');
+
+      // 파일명 생성 (타임스탬프 포함)
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const filename = `section_results_${timestamp}.txt`;
+
+      // Blob 생성 및 다운로드
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      console.log('결과 파일이 다운로드되었습니다:', filename);
+    } catch (error) {
+      console.error('파일 저장 중 오류가 발생했습니다:', error);
+    }
   };
 
   // 섹션 선택 핸들러
@@ -210,6 +349,7 @@ const App = () => {
                       <option value="300">300</option>
                       <option value="400">400</option>
                       <option value="500">500</option>
+                      <option value="600">600</option>
                     </select>
                   </td>
                   <td className="unit-cell-left">MPa</td>
@@ -253,18 +393,22 @@ const App = () => {
                   <td className="input-cell">
                     <select value={fYU} onChange={(e) => setFYU(e.target.value)}>
                       <option value=""></option>
-                      <option value="235">235</option>
-                      <option value="275">275</option>
-                      <option value="355">355</option>
+                      <option value="SM355">SM355</option>
+                      <option value="SM420">SM420</option>
+                      <option value="SM460">SM460</option>
+                      <option value="SN355">SN355</option>
+                      <option value="SHN355">SHN355</option>
                     </select>
                   </td>
                   <td className="label-cell-inline">F_yH</td>
                   <td className="input-cell">
                     <select value={fYH} onChange={(e) => setFYH(e.target.value)}>
                       <option value=""></option>
-                      <option value="235">235</option>
-                      <option value="275">275</option>
-                      <option value="355">355</option>
+                      <option value="SM355">SM355</option>
+                      <option value="SM420">SM420</option>
+                      <option value="SM460">SM460</option>
+                      <option value="SN355">SN355</option>
+                      <option value="SHN355">SHN355</option>
                     </select>
                   </td>
                 </tr>
@@ -303,9 +447,8 @@ const App = () => {
                   <td className="label-cell-wide" colSpan={2}>- Support</td>
                   <td className="input-cell">
                     <select value={support} onChange={(e) => setSupport(e.target.value)}>
-                      <option value=""></option>
-                      <option value="Simple">Simple</option>
-                      <option value="Continuous">Continuous</option>
+                      <option value="미사용">미사용</option>
+                      <option value="사용">사용</option>
                     </select>
                   </td>
                   <td className="label-cell-inline"></td>
