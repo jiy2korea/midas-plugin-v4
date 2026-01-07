@@ -37,6 +37,7 @@
   font-size: 13px;
   border: 1px solid #999;
   background-color: white;
+  color: black;
   cursor: pointer;
 }
 
@@ -111,12 +112,16 @@
   height: 22px;
   border: 1px solid #999;
   padding: 2px 4px;
+  background-color: white;
+  color: black;
 }
 
 .info-table-left .input-cell-left select {
   min-width: 60px;
   height: 24px;
   border: 1px solid #999;
+  background-color: white;
+  color: black;
 }
 
 .info-table-left .unit-cell-left {
@@ -166,6 +171,8 @@
   height: 22px;
   border: 1px solid #999;
   padding: 2px 4px;
+  background-color: white;
+  color: black;
 }
 
 .info-row .input-small {
@@ -176,6 +183,8 @@
   min-width: 60px;
   height: 24px;
   border: 1px solid #999;
+  background-color: white;
+  color: black;
 }
 
 .separator {
@@ -254,6 +263,8 @@
   min-width: 80px;
   height: 24px;
   border: 1px solid #999;
+  background-color: white;
+  color: black;
 }
 
 .info-table .input-cell input[type="text"] {
@@ -261,6 +272,8 @@
   height: 22px;
   border: 1px solid #999;
   padding: 2px 4px;
+  background-color: white;
+  color: black;
 }
 
 .info-table .unit-cell {
@@ -290,6 +303,7 @@
   border: 1px solid #999;
   cursor: pointer;
   font-size: 12px;
+  color: black;
 }
 
 .search-button:hover {
@@ -318,6 +332,7 @@
   border: 1px solid #999;
   padding: 4px 6px;
   text-align: center;
+  color: black;
 }
 
 .section-table th {
@@ -346,6 +361,7 @@
 
 .selected-row td {
   background-color: #cce5ff !important;
+  color: black !important;
 }
 
 /* 하단 버튼 영역 */
@@ -363,6 +379,7 @@
   border: 1px solid #999;
   cursor: pointer;
   font-size: 12px;
+  color: black;
 }
 
 .action-button:hover {

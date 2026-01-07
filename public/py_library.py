@@ -359,8 +359,10 @@ class Vibration:
     g = 9.81
     
     def __init__(self, useage, deflection_L, weight):
+        self.useage = useage
         self.naturalFrequency = 0.18 * (self.g*1000 / deflection_L)**(1/2)
         self.maxAccelerationRatio = self.P_o[useage] * math.exp(-0.35*self.naturalFrequency) / (self.beta[useage] * weight)
+        self.check = self.maxAccelerationRatio <= self.accRatioLimit.get(useage, 0.5)
 
 
 # React에서 호출할 함수

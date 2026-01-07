@@ -6,7 +6,9 @@
 		{
 			"files": [
 				"./py_base_sub.py",
-				"./py_base.py"
+				"./py_base.py",
+				"./py_config.py",
+				"./py_library.py"
 			]
 		}
 	]

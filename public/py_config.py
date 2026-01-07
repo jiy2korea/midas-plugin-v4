@@ -21,7 +21,7 @@ CONCRETE_STRENGTH = {
 }
 
 # 철근 탄성계수 (MPa)
-REBAR_ELASTIC_MODULUS = 200000
+REBAR_ELASTIC_MODULUS = 205000
 
 
 # ============================================================
@@ -248,4 +248,5 @@ def get_default_design_inputs():
         "deflection_limit_ratio": DEFLECTION_LIMIT_RATIO,
         "usage": DEFAULT_USAGE,
     }
+
 

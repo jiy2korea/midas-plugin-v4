@@ -59,6 +59,11 @@ npm install
 npm start
 ```
 
+**PowerShell에서 실행:**
+```powershell
+cd "C:\Cursor Projects\Midas Plugin V4"; npm start
+```
+
 ### 3. 브라우저에서 확인
 ```
 http://localhost:3000
