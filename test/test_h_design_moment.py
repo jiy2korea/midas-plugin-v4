@@ -242,3 +242,4 @@ if __name__ == '__main__':
     print(f"설계강도: {legacy_result['H_designMomentStrength_Construction_Negative'] / 1e6:.2f} kN·m")
     print(f"검토결과: {'OK' if legacy_result['H_momentStrenthCheck_Negative'] else 'NG'}")
 
+

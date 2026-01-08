@@ -112,12 +112,6 @@ def calculate_design_strength(input_data):
 def _run_design_calculation(config):
     """설계 계산 실행 (내부 함수)"""
     
-    # 전달받은 config 데이터 확인
-    print('========================================')
-    print('_run_design_calculation에 전달된 config 데이터:')
-    print(json.dumps(config, indent=2, ensure_ascii=False))
-    print('========================================')
-    
     # ==========================================================================
     # 1. 입력 데이터 파싱
     # ==========================================================================

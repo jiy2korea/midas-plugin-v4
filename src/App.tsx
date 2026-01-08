@@ -140,16 +140,16 @@ const App = () => {
       }
 
       // 5. 결과 출력
-      console.log('========================================');
-      console.log('Python 설계강도 계산 결과');
-      console.log('========================================');
-      console.log('전체 결과:', result);
-      console.log('섹션 정보:', result.sectionInfo);
-      console.log('시공단계:', result.constructionStage);
-      console.log('합성단계:', result.compositeStage);
-      console.log('비용:', result.cost);
-      console.log('전체 검토:', result.overallCheck);
-      console.log('========================================');
+      // console.log('========================================');
+      // console.log('Python 설계강도 계산 결과');
+      // console.log('========================================');
+      // console.log('전체 결과:', result);
+      // console.log('섹션 정보:', result.sectionInfo);
+      // console.log('시공단계:', result.constructionStage);
+      // console.log('합성단계:', result.compositeStage);
+      // console.log('비용:', result.cost);
+      // console.log('전체 검토:', result.overallCheck);
+      // console.log('========================================');
 
       // 6. UI 업데이트 (결과를 테이블에 표시)
       const sectionData: SectionData[] = [{
@@ -170,7 +170,7 @@ const App = () => {
       setSectionList(sectionData);
 
       // 7. 결과를 test 폴더에 저장 (탭으로 구분된 데이터 파일)
-      saveResultsToFile(result, pythonInput);
+      // saveResultsToFile(result, pythonInput);
 
     } catch (error) {
       console.error('계산 중 오류가 발생했습니다:', error);
