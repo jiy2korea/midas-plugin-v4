@@ -21,6 +21,7 @@ from py_library import (
     get_h_beam_data,
     calculate_section_properties,
     StructuralSteelYieldStress,
+    concreteStrength,
     WidthThicknessRatio,
     BeamForceCalculator,
     NominalMomentStrength_2,
@@ -41,14 +42,7 @@ from py_library import (
 
 # 설계 기본값 import
 from py_config import (
-    STEEL_ELASTIC_MODULUS,
-    CONCRETE_STRENGTH,
-    DEFAULT_SPAN_LENGTH,
-    DEFAULT_UNIFORM_LOAD,
-    STUD_ANCHOR,
     get_default_design_inputs,
-    create_u_section_squares,
-    create_h_section_squares,
 )
 
 
@@ -128,7 +122,7 @@ def _run_design_calculation(config):
     H_width = h_data['B']
     H_web_thickness = h_data['t1']
     H_flange_thickness = h_data['t2']
-    H_length = float(config.get('h_bracket_length', 1700))  # H브라켓 길이
+    H_length = float(config.get('h_bracket_length'))
     
     # U형강 정보 (매칭)
     u_match = HBeamToUSectionMatch.get(h_section_name)
@@ -137,71 +131,74 @@ def _run_design_calculation(config):
     
     U_height = u_match['U_height']
     U_width = u_match['U_width']
-    U_wing_width = u_match.get('U_wing_width', 80)  # 날개폭 기본값
+    U_wing_width = float(config.get('u_wing_width'))
     U_thickness = u_match['U_thickness']
+
+    # 슬래브 정보
+    slab_depth = float(config.get('slabDs'))
     
-    # 재료 물성
-    steel_E = float(config.get('steelElasticModulus', STEEL_ELASTIC_MODULUS))  # 탄성계수 (config에서 받거나 기본값 사용)
+    # 철근 정보
+    top_rebar_qty = int(config.get('rebar_top_count'))
+    top_rebar_dia_str = str(config.get('rebar_top_dia'))
+    top_rebar_dia = int(top_rebar_dia_str.replace('D', '') if 'D' in top_rebar_dia_str else top_rebar_dia_str)
+    top_rebar_area = reBarArea.get(top_rebar_dia)
     
-    # 강종 정보 (두께에 따라 항복강도 계산)
+    bot_rebar_qty = int(config.get('rebar_bot_count'))
+    bot_rebar_dia_str = str(config.get('rebar_bot_dia'))
+    bot_rebar_dia = int(bot_rebar_dia_str.replace('D', '') if 'D' in bot_rebar_dia_str else bot_rebar_dia_str)
+    bot_rebar_area = reBarArea.get(bot_rebar_dia)
+
+    # 전단연결재
+    stud_spacing = float(config.get('stud_spacing'))
+    angle_spacing = float(config.get('angle_spacing'))
+    angle_height = float(config.get('angle_height'))
+    stud_diameter = float(config.get('stud_diameter'))
+    stud_strength = float(config.get('stud_strength'))
+    
+    # 재료(강재)
+    steel_E = float(config.get('steel_elastic_modulus'))
     steel_H_type = config.get('steelH')  # H형강 강종 (예: 'SM355', 'SM420' 등)
     steel_U_type = config.get('steelU')  # U형강 강종 (예: 'SM355', 'SM420' 등)
     
-    # 항복강도 계산: 강종이 제공되면 두께에 따라 계산, 없으면 기존 방식 사용
+    # 강재 항복강도
     if steel_H_type and steel_H_type in ['SM355', 'SM420', 'SM460', 'SN355', 'SHN355']:
         steel_Fy_H = StructuralSteelYieldStress(steel=steel_H_type, thickness=H_flange_thickness)
     else:
-        steel_Fy_H = float(config.get('fYH', 355))
+        steel_Fy_H = 355.0 # SM355
     
     if steel_U_type and steel_U_type in ['SM355', 'SM420', 'SM460', 'SN355', 'SHN355']:
         steel_Fy_U = StructuralSteelYieldStress(steel=steel_U_type, thickness=U_thickness)
     else:
-        steel_Fy_U = float(config.get('fYU', 355))
+        steel_Fy_U = 355.0 # SM355
     
-    f_yr = float(config.get('fYr', 400))  # 철근 항복강도
-    
-    # 콘크리트 강도
-    concrete_grade = config.get('concrete', 'C30')
-    f_ck = CONCRETE_STRENGTH.get(concrete_grade, 30)
+    # 재료(콘크리트)
+    concrete_grade = config.get('concrete')
+    f_ck = concreteStrength.get(concrete_grade)
     E_c = ConcreteElasticModulus(f_ck)
-    
-    # 기하 조건
-    beam_length = float(config.get('span_length', DEFAULT_SPAN_LENGTH))
-    spacing1 = float(config.get('bay_spacing1', 3000))  # 좌측 간격
-    spacing2 = float(config.get('bay_spacing2', 3000))  # 우측 간격
-    slab_depth = float(config.get('slabDs', 150))
-    
-    # 철근 정보
-    top_rebar_qty = int(config.get('rebarTopCount', 0) or 0)
-    top_rebar_dia_str = str(config.get('rebarTopDia', 'D16'))
-    top_rebar_dia = int(top_rebar_dia_str.replace('D', '') if 'D' in top_rebar_dia_str else top_rebar_dia_str)
-    top_rebar_area = reBarArea.get(top_rebar_dia, 199)
-    
-    bot_rebar_qty = int(config.get('rebarBotCount', 0) or 0)
-    bot_rebar_dia_str = str(config.get('rebarBotDia', 'D16'))
-    bot_rebar_dia = int(bot_rebar_dia_str.replace('D', '') if 'D' in bot_rebar_dia_str else bot_rebar_dia_str)
-    bot_rebar_area = reBarArea.get(bot_rebar_dia, 199)
-    
-    # 전단연결재
-    stud_spacing = float(config.get('studSpacing', 200) or 200)
-    angle_spacing = float(config.get('angleSpacing', 0) or 0)
-    shear_connector_height = 50  # 전단연결재 높이
-    
+
+    # 재료(철근)
+    f_yr = float(config.get('rebar_yield_stress'))
+
     # 설계 조건
-    end_condition = config.get('endCondition', 'Fix-Fix')
-    beam_support = int(config.get('beamSupport', 0))  # 0: 무지보, 1: 서포트
-    usage_for_vibration = config.get('usageForVibration', '사무실')  # '사무실', '쇼핑몰', '육교(실내)', '육교(실외)'
-    
+    end_condition = config.get('endCondition')
+    beam_support = int(config.get('beamSupport'))  # 0: 서포트 사용 안함, 1: 서포트 사용
+    usage_for_vibration = config.get('usageForVibration')  # '사무실', '쇼핑몰', '육교(실내)', '육교(실외)'
+
     # 하중
-    live_load_construction = float(config.get('liveLoadConstruction', 2.5))  # 시공하중 [kN/m²]
-    dead_load_finish = float(config.get('deadLoadFinish', 1.5))  # 마감하중 [kN/m²]
-    live_load_permanent = float(config.get('liveLoadPermanent', 2.5))  # 활하중 [kN/m²]
+    live_load_construction = float(config.get('liveLoadConstruction'))  # 시공하중 [kN/m²]
+    dead_load_finish = float(config.get('deadLoadFinish'))  # 마감하중 [kN/m²]
+    live_load_permanent = float(config.get('liveLoadPermanent'))  # 활하중 [kN/m²]
     
     # 부재력 (수동 입력)
-    manual_positive_moment = float(config.get('manualPositiveMoment', 0) or 0) * 1e6  # kN·m -> N·mm
-    manual_negative_moment = float(config.get('manualNegativeMoment', 0) or 0) * 1e6
-    manual_negative_moment_U = float(config.get('manualNegativeMomentU', 0) or 0) * 1e6
-    manual_shear_force = float(config.get('manualShearForce', 0) or 0) * 1e3  # kN -> N
+    manual_positive_moment = float(config.get('manualPositiveMoment')) * 1e6  # kN·m -> N·mm
+    manual_negative_moment = float(config.get('manualNegativeMoment')) * 1e6
+    manual_negative_moment_U = float(config.get('manualNegativeMomentU')) * 1e6
+    manual_shear_force = float(config.get('manualShearForce')) * 1e3  # kN -> N
+
+    # 기하 조건
+    beam_length = float(config.get('span_length'))
+    spacing1 = float(config.get('bay_spacing1'))  # 좌측 간격
+    spacing2 = float(config.get('bay_spacing2'))  # 우측 간격
     
     # ==========================================================================
     # 2. 단면 생성
@@ -429,14 +426,14 @@ def _run_design_calculation(config):
     
     # --- 전단연결재 강도 ---
     stud_anchor_strength = StudAnchorStrength(
-        studAnchorArea=math.pi * (19 / 2) ** 2,  # 19mm 스터드
+        studAnchorArea=math.pi * (stud_diameter / 2) ** 2,
         f_ck=f_ck,
         concreteElasticModulus=E_c,
-        studAnchorStrength=400
+        studAnchorStrength=stud_strength
     )
     
     angle_anchor_strength = AngleAnchorStrength(
-        height=shear_connector_height,
+        height=angle_height,
         U_width=U_width - U_wing_width * 2,
         f_ck=f_ck
     )

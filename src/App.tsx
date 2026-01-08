@@ -89,14 +89,14 @@ const App = () => {
       // 2. Python 함수에 전달할 입력 데이터 준비
       const pythonInput = {
         selectedMember,
-        h_bracket_length: 1700, // 기본값 (필요시 UI에서 입력받도록 수정 가능)
-        rebarTopCount,
-        rebarTopDia,
-        rebarBotCount,
-        rebarBotDia,
-        fYr,
-        studSpacing,
-        angleSpacing,
+        h_bracket_length: 1700,
+        rebar_top_count: rebarTopCount,
+        rebar_top_dia: rebarTopDia,
+        rebar_bot_count: rebarBotCount,
+        rebar_bot_dia: rebarBotDia,
+        rebar_yield_stress: fYr,  // fYr 대신 rebar_yield_stress로 전달
+        stud_spacing: studSpacing,
+        angle_spacing: angleSpacing,
         fYU,
         fYH,
         steelU: fYU || undefined, // 강종 정보 전달

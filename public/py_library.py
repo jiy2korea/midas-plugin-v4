@@ -124,6 +124,16 @@ structuralSteelYieldStressData = {
     "SHN355": {16: 355, 40: 355, 75: 355, 100: 355}
 }
 
+# 콘크리트 강도 등급별 설계기준강도 (MPa)
+concreteStrength = {
+    "C24": 24,
+    "C27": 27,
+    "C30": 30,
+    "C35": 35,
+    "C40": 40,
+    "C50": 50,
+}
+
 # H형강-U형강 매칭 데이터 (H_section -> U_height, U_width, U_thickness)
 HBeamToUSectionMatch = {
     "H-248X124X5X8": {"U_height": 150, "U_width": 175.0, "U_thickness": 6.0},
