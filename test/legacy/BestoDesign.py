@@ -684,23 +684,23 @@ def  main():
     input_flat = flatten_dict(parsed_inputs, 'INPUT')
     result_flat = flatten_dict(result, 'OUTPUT')
     
-    # 5. 지정된 순서대로 텍스트 파일 생성 (값만 저장)
-    lines = []
-    for key in ordered_keys:
-        value = input_flat.get(key) if key.startswith('INPUT_') else result_flat.get(key, '')
-        value_str = '' if value is None else str(value)
-        lines.append(value_str)  # 키 없이 값만 저장
-    
-    # 5. 파일 저장
-    from datetime import datetime
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    filename = f'design_calculation_{timestamp}.txt'
-    filepath = os.path.join(os.path.dirname(__file__), filename)
-    
-    with open(filepath, 'w', encoding='utf-8') as f:
-        f.write('\n'.join(lines))
-    
-    print(f'텍스트 파일이 생성되었습니다: {filepath}')
+    # 5. 지정된 순서대로 텍스트 파일 생성 (값만 저장) - 일시 중지됨
+    # lines = []
+    # for key in ordered_keys:
+    #     value = input_flat.get(key) if key.startswith('INPUT_') else result_flat.get(key, '')
+    #     value_str = '' if value is None else str(value)
+    #     lines.append(value_str)  # 키 없이 값만 저장
+    # 
+    # # 5. 파일 저장
+    # from datetime import datetime
+    # timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    # filename = f'design_calculation_{timestamp}.txt'
+    # filepath = os.path.join(os.path.dirname(__file__), filename)
+    # 
+    # with open(filepath, 'w', encoding='utf-8') as f:
+    #     f.write('\n'.join(lines))
+    # 
+    # print(f'텍스트 파일이 생성되었습니다: {filepath}')
     # ========================================================================
 
     # -------------- 에러 메세지 --------------

@@ -152,19 +152,51 @@ const App = () => {
       // console.log('========================================');
 
       // 6. UI 업데이트 (결과를 테이블에 표시)
+      // required/design 비율 계산 헬퍼 함수 (소수점 2째자리까지만)
+      const calcRatio = (required: number | undefined, design: number | undefined): number => {
+        if (!design || design === 0) return 0;
+        const ratio = required ? required / design : 0;
+        return Math.round(ratio * 100) / 100;
+      };
+
+      // design/required 비율 계산 헬퍼 함수 (처짐용, 소수점 2째자리까지만)
+      const calcDeflectionRatio = (design: number | undefined, required: number | undefined): number => {
+        if (!required || required === 0) return 0;
+        const ratio = design ? design / required : 0;
+        return Math.round(ratio * 100) / 100;
+      };
+
       const sectionData: SectionData[] = [{
         section: `${result.sectionInfo?.hSection || selectedMember}\n${result.sectionInfo?.uSection || ''}`,
         chk: result.overallCheck || 'NG',
         selected: false,
         beforeComposite: {
-          mEnd: result.constructionStage?.H_negative?.requiredStrength || 0,
-          mMid: result.constructionStage?.U_positive?.requiredStrength || 0,
-          v: result.constructionStage?.U_shear?.requiredStrength || 0,
+          mEnd: calcRatio(
+            result.constructionStage?.H_negative?.requiredStrength,
+            result.constructionStage?.H_negative?.designStrength
+          ),
+          mMid: calcRatio(
+            result.constructionStage?.U_positive?.requiredStrength,
+            result.constructionStage?.U_positive?.designStrength
+          ),
+          v: calcRatio(
+            result.constructionStage?.U_shear?.requiredStrength,
+            result.constructionStage?.U_shear?.designStrength
+          ),
         },
         afterComposite: {
-          mEnd: result.compositeStage?.H_negative?.requiredStrength || 0,
-          mMid: result.compositeStage?.U_positive?.requiredStrength || 0,
-          v: result.compositeStage?.shear?.requiredStrength || 0,
+          mEnd: calcRatio(
+            result.compositeStage?.H_negative?.requiredStrength,
+            result.compositeStage?.H_negative?.designStrength
+          ),
+          mMid: calcRatio(
+            result.compositeStage?.U_positive?.requiredStrength,
+            result.compositeStage?.U_positive?.designStrength
+          ),
+          v: calcDeflectionRatio(
+            result.compositeStage?.deflection?.deflectionDeadLive,
+            result.compositeStage?.deflection?.deflectionDeadLiveLimit
+          ),
         },
       }];
       setSectionList(sectionData);
@@ -175,8 +207,9 @@ const App = () => {
       // ========================================================================
       // [임시 기능] 텍스트 파일 다운로드 - 입력값과 결과값 확인용 (줄바꿈으로 구분)
       // TODO: 나중에 삭제 예정
+      // 일시 정지: 다운로드 기능 비활성화
       // ========================================================================
-      downloadResultAsCSV(result, pythonInput);
+      // downloadResultAsCSV(result, pythonInput);
       // ========================================================================
 
     } catch (error) {
@@ -712,12 +745,12 @@ const App = () => {
                         onChange={() => handleSectionSelect(index)}
                       />
                     </td>
-                    <td>{section.beforeComposite.mEnd}</td>
-                    <td>{section.beforeComposite.mMid}</td>
-                    <td>{section.beforeComposite.v}</td>
-                    <td>{section.afterComposite.mEnd}</td>
-                    <td>{section.afterComposite.mMid}</td>
-                    <td>{section.afterComposite.v}</td>
+                    <td>{section.beforeComposite.mEnd.toFixed(2)}</td>
+                    <td>{section.beforeComposite.mMid.toFixed(2)}</td>
+                    <td>{section.beforeComposite.v.toFixed(2)}</td>
+                    <td>{section.afterComposite.mEnd.toFixed(2)}</td>
+                    <td>{section.afterComposite.mMid.toFixed(2)}</td>
+                    <td>{section.afterComposite.v.toFixed(2)}</td>
                   </tr>
                 ))
               )}
