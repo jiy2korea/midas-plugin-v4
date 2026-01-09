@@ -84,17 +84,24 @@ http://localhost:3000
 - [ ] 상세 정보 화면
 
 ### 계산 기능 (py_library.py)
-- [x] H형강 규격 데이터 (HBeamData)
+- [x] H형강 규격 데이터 (HBeamData) - 68개 규격
 - [x] 철근 데이터 (reBarArea, reBarUnitWeight)
 - [x] 단면 클래스 (SquareSection, CombinedSection)
 - [x] 콘크리트 탄성계수 (ConcreteElasticModulus)
 - [x] 유효폭 계산 (EffectiveWidth)
 - [x] 처짐 계산 (Deflection)
 - [x] 진동 검토 (Vibration)
-- [ ] 휨강도 계산 (NominalMomentStrength)
-- [ ] 전단강도 계산 (NominalShearStrength)
-- [ ] 합성단면 강도 (CompositeSectionMomentStrength)
-- [ ] 비용 계산 (CostCalculation)
+- [x] 휨강도 계산 (NominalMomentStrength_2, NominalMomentStrength_6)
+- [x] 전단강도 계산 (NominalShearStrength)
+- [x] 전단연결재 강도 (StudAnchorStrength, AngleAnchorStrength)
+- [x] 설계강도 (DesignMomentStrength, DesignShearStrength)
+- [x] 합성단면 강도 (CompositeSectionMomentStrength_positive, CompositeSectionMomentStrength_Negative)
+- [x] 강도 검토 (StrengthCheck)
+- [x] 사용성 검토 (ServiceabilityCheck)
+- [x] 유효관성모멘트 (EffectiveInertia)
+- [x] 철근 최소 간격 검토 (MinimumRebarSpacingCheck)
+- [x] 비용 계산 (CostCalculation)
+- [x] py_main.py에서 모든 계산 함수 import 완료
 
 ---
 
@@ -120,6 +127,12 @@ http://localhost:3000
 - `library.py` → `public/py_library.py`
 - 핵심 클래스/함수 이전 완료
 - py_main.py에서 import 설정
+
+#### 5단계: 계산 함수 통합 완료
+- 모든 계산 함수를 py_library.py로 이전 완료
+- py_main.py에서 40개 이상의 계산 함수 import 완료
+- 휨강도, 전단강도, 합성단면 강도, 비용 계산 등 핵심 기능 구현 완료
+- React UI와 Python 계산 엔진 연동 구조 구축
 
 ---
 
@@ -182,14 +195,15 @@ C:\Cursor Projects\Midas Plugin V3\legacy\
 
 ## 🔜 다음 작업
 
-1. **Python 계산 로직 완성**
-   - 휨강도, 전단강도 계산 함수 이전
-   - 합성단면 강도 계산 함수 이전
-   - 비용 계산 함수 이전
+1. **추천하는 부재 리스트 만들기**
+   - 입력 조건에 맞는 부재들을 계산하여 필터링
+   - 설계 조건을 만족하는 부재들을 우선순위별로 정렬
+   - 결과를 테이블 형태로 표시
 
-2. **React ↔ Python 연동**
+2. **React ↔ Python 연동 완성**
    - Search 버튼 클릭 시 Python 계산 호출
    - 계산 결과를 테이블에 표시
+   - 상세 정보 화면 구현
 
 3. **MIDAS API 연동**
    - 부재 정보 조회
