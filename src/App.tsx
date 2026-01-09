@@ -172,11 +172,204 @@ const App = () => {
       // 7. 결과를 test 폴더에 저장 (탭으로 구분된 데이터 파일)
       // saveResultsToFile(result, pythonInput);
 
+      // ========================================================================
+      // [임시 기능] 텍스트 파일 다운로드 - 입력값과 결과값 확인용 (줄바꿈으로 구분)
+      // TODO: 나중에 삭제 예정
+      // ========================================================================
+      downloadResultAsCSV(result, pythonInput);
+      // ========================================================================
+
     } catch (error) {
       console.error('계산 중 오류가 발생했습니다:', error);
       alert(`계산 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
+
+  // ========================================================================
+  // [임시 기능] 텍스트 파일 다운로드 함수 - 입력값과 결과값 확인용 (줄바꿈으로 구분)
+  // TODO: 나중에 삭제 예정
+  // ========================================================================
+  const downloadResultAsCSV = (result: any, pythonInput: any) => {
+    try {
+      // 객체를 평탄화하는 함수
+      const flatten = (obj: any, prefix = '', sep = '_'): Record<string, any> => {
+        const flattened: Record<string, any> = {};
+        for (const [key, value] of Object.entries(obj)) {
+          const newKey = prefix ? `${prefix}${sep}${key}` : key;
+          if (value && typeof value === 'object' && !Array.isArray(value)) {
+            Object.assign(flattened, flatten(value, newKey, sep));
+          } else {
+            flattened[newKey] = value;
+          }
+        }
+        return flattened;
+      };
+
+      // 입력값(parsedInputs)과 결과값 평탄화
+      const inputFlat = result.parsedInputs ? flatten(result.parsedInputs, 'INPUT') : {};
+      const resultFlat = flatten(result, 'OUTPUT');
+      
+      // 결과값에서 parsedInputs 키 제외 (중복 방지)
+      const outputOnly: Record<string, any> = {};
+      for (const key in resultFlat) {
+        if (!key.startsWith('OUTPUT_parsedInputs')) {
+          outputOnly[key] = resultFlat[key];
+        }
+      }
+
+      // 지정된 순서대로 키 목록 정의
+      const orderedKeys = [
+        'INPUT_hSection_sectionName',
+        'INPUT_hSection_height',
+        'INPUT_hSection_width',
+        'INPUT_hSection_webThickness',
+        'INPUT_hSection_flangeThickness',
+        'INPUT_hSection_bracketLength',
+        'INPUT_uSection_height',
+        'INPUT_uSection_width',
+        'INPUT_uSection_wingWidth',
+        'INPUT_uSection_thickness',
+        'INPUT_slab_depth',
+        'INPUT_rebar_top_quantity',
+        'INPUT_rebar_top_diameter',
+        'INPUT_rebar_top_diameterStr',
+        'INPUT_rebar_top_area',
+        'INPUT_rebar_bottom_quantity',
+        'INPUT_rebar_bottom_diameter',
+        'INPUT_rebar_bottom_diameterStr',
+        'INPUT_rebar_bottom_area',
+        'INPUT_rebar_yieldStress',
+        'INPUT_shearConnector_studSpacing',
+        'INPUT_shearConnector_angleSpacing',
+        'INPUT_shearConnector_angleHeight',
+        'INPUT_shearConnector_studDiameter',
+        'INPUT_shearConnector_studStrength',
+        'INPUT_steel_elasticModulus',
+        'INPUT_steel_hType',
+        'INPUT_steel_uType',
+        'INPUT_steel_fyH',
+        'INPUT_steel_fyU',
+        'INPUT_concrete_grade',
+        'INPUT_concrete_fck',
+        'INPUT_concrete_elasticModulus',
+        'INPUT_designCondition_endCondition',
+        'INPUT_designCondition_beamSupport',
+        'INPUT_designCondition_usageForVibration',
+        'INPUT_loads_liveLoadConstruction',
+        'INPUT_loads_deadLoadFinish',
+        'INPUT_loads_liveLoadPermanent',
+        'INPUT_manualForces_positiveMoment',
+        'INPUT_manualForces_negativeMoment',
+        'INPUT_manualForces_negativeMomentU',
+        'INPUT_manualForces_shearForce',
+        'INPUT_geometry_beamLength',
+        'INPUT_geometry_spacing1',
+        'INPUT_geometry_spacing2',
+        'OUTPUT_sectionInfo_hSection',
+        'OUTPUT_sectionInfo_uSection',
+        'OUTPUT_sectionInfo_hArea',
+        'OUTPUT_sectionInfo_uArea',
+        'OUTPUT_sectionInfo_hInertia',
+        'OUTPUT_sectionInfo_uInertia',
+        'OUTPUT_sectionInfo_hModulusX1',
+        'OUTPUT_sectionInfo_compositeInertia',
+        'OUTPUT_sectionInfo_effectiveWidth',
+        'OUTPUT_materialInfo_steelFyH',
+        'OUTPUT_materialInfo_steelFyU',
+        'OUTPUT_materialInfo_steelE',
+        'OUTPUT_materialInfo_concrete',
+        'OUTPUT_materialInfo_fck',
+        'OUTPUT_materialInfo_Ec',
+        'OUTPUT_materialInfo_fyr',
+        'OUTPUT_loads_weightDeadLoad1',
+        'OUTPUT_loads_weightDeadLoad2',
+        'OUTPUT_loads_weightLiveLoad',
+        'OUTPUT_loads_weightConstructionLoad',
+        'OUTPUT_constructionStage_U_positive_requiredStrength',
+        'OUTPUT_constructionStage_U_positive_nominalStrength',
+        'OUTPUT_constructionStage_U_positive_designStrength',
+        'OUTPUT_constructionStage_U_negative_requiredStrength',
+        'OUTPUT_constructionStage_U_negative_nominalStrength',
+        'OUTPUT_constructionStage_U_negative_designStrength',
+        'OUTPUT_constructionStage_U_shear_requiredStrength',
+        'OUTPUT_constructionStage_U_shear_nominalStrength',
+        'OUTPUT_constructionStage_U_shear_designStrength',
+        'OUTPUT_constructionStage_H_negative_requiredStrength',
+        'OUTPUT_constructionStage_H_negative_nominalStrength',
+        'OUTPUT_constructionStage_H_negative_designStrength',
+        'OUTPUT_constructionStage_H_shear_requiredStrength',
+        'OUTPUT_constructionStage_H_shear_nominalStrength',
+        'OUTPUT_constructionStage_H_shear_designStrength',
+        'OUTPUT_constructionStage_deflection_deflectionD1',
+        'OUTPUT_constructionStage_deflection_deflectionC',
+        'OUTPUT_constructionStage_deflection_totalDeflection',
+        'OUTPUT_constructionStage_deflection_limit',
+        'OUTPUT_constructionStage_deflection_check',
+        'OUTPUT_compositeStage_shearConnector_studCount',
+        'OUTPUT_compositeStage_shearConnector_studUnitStrength',
+        'OUTPUT_compositeStage_shearConnector_studTotalStrength',
+        'OUTPUT_compositeStage_shearConnector_angleCount',
+        'OUTPUT_compositeStage_shearConnector_angleUnitStrength',
+        'OUTPUT_compositeStage_shearConnector_angleTotalStrength',
+        'OUTPUT_compositeStage_shearConnector_totalStrength',
+        'OUTPUT_compositeStage_U_positive_requiredStrength',
+        'OUTPUT_compositeStage_U_positive_nominalStrength',
+        'OUTPUT_compositeStage_U_positive_designStrength',
+        'OUTPUT_compositeStage_U_negative_requiredStrength',
+        'OUTPUT_compositeStage_U_negative_nominalStrength',
+        'OUTPUT_compositeStage_U_negative_designStrength',
+        'OUTPUT_compositeStage_H_negative_requiredStrength',
+        'OUTPUT_compositeStage_H_negative_nominalStrength',
+        'OUTPUT_compositeStage_H_negative_designStrength',
+        'OUTPUT_compositeStage_shear_requiredStrength',
+        'OUTPUT_compositeStage_shear_designStrength',
+        'OUTPUT_compositeStage_deflection_compositeRatio',
+        'OUTPUT_compositeStage_deflection_effectiveInertia',
+        'OUTPUT_compositeStage_deflection_deflectionLive',
+        'OUTPUT_compositeStage_deflection_deflectionLiveLimit',
+        'OUTPUT_compositeStage_deflection_deflectionLiveCheck',
+        'OUTPUT_compositeStage_deflection_deflectionDeadLive',
+        'OUTPUT_compositeStage_deflection_deflectionDeadLiveLimit',
+        'OUTPUT_compositeStage_deflection_deflectionDeadLiveCheck',
+        'OUTPUT_compositeStage_vibration_naturalFrequency',
+        'OUTPUT_compositeStage_vibration_maxAccelerationRatio',
+        'OUTPUT_compositeStage_vibration_accelerationLimit',
+      ];
+      
+      // 지정된 순서대로 텍스트 파일 생성 (값만 저장)
+      const lines: string[] = [];
+      for (const key of orderedKeys) {
+        const value = key.startsWith('INPUT_') 
+          ? (inputFlat[key] ?? '') 
+          : (outputOnly[key] ?? '');
+        const valueStr = value === null || value === undefined ? '' : String(value);
+        lines.push(valueStr);  // 키 없이 값만 저장
+      }
+
+      // 텍스트 내용 생성
+      const textContent = lines.join('\n');
+
+      // 텍스트 파일로 다운로드
+      const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // 파일명 생성 (타임스탬프 포함)
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      link.download = `design_calculation_${timestamp}.txt`;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      console.log('텍스트 파일이 다운로드되었습니다:', link.download);
+    } catch (error) {
+      console.error('텍스트 파일 다운로드 중 오류가 발생했습니다:', error);
+    }
+  };
+  // ========================================================================
 
   // 결과를 파일로 저장하는 함수
   const saveResultsToFile = (result: any, pythonInput: any) => {

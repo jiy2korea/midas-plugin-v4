@@ -200,6 +200,82 @@ def _run_design_calculation(config):
     spacing1 = float(config.get('bay_spacing1'))  # 좌측 간격
     spacing2 = float(config.get('bay_spacing2'))  # 우측 간격
     
+    # 파싱된 입력 데이터 딕셔너리 생성
+    parsed_inputs = {
+        'hSection': {
+            'sectionName': h_section_name,
+            'height': H_height,
+            'width': H_width,
+            'webThickness': H_web_thickness,
+            'flangeThickness': H_flange_thickness,
+            'bracketLength': H_length,
+        },
+        'uSection': {
+            'height': U_height,
+            'width': U_width,
+            'wingWidth': U_wing_width,
+            'thickness': U_thickness,
+        },
+        'slab': {
+            'depth': slab_depth,
+        },
+        'rebar': {
+            'top': {
+                'quantity': top_rebar_qty,
+                'diameter': top_rebar_dia,
+                'diameterStr': top_rebar_dia_str,
+                'area': top_rebar_area,
+            },
+            'bottom': {
+                'quantity': bot_rebar_qty,
+                'diameter': bot_rebar_dia,
+                'diameterStr': bot_rebar_dia_str,
+                'area': bot_rebar_area,
+            },
+            'yieldStress': f_yr,
+        },
+        'shearConnector': {
+            'studSpacing': stud_spacing,
+            'angleSpacing': angle_spacing,
+            'angleHeight': angle_height,
+            'studDiameter': stud_diameter,
+            'studStrength': stud_strength,
+        },
+        'steel': {
+            'elasticModulus': steel_E,
+            'hType': steel_H_type,
+            'uType': steel_U_type,
+            'fyH': steel_Fy_H,
+            'fyU': steel_Fy_U,
+        },
+        'concrete': {
+            'grade': concrete_grade,
+            'fck': f_ck,
+            'elasticModulus': E_c,
+        },
+        'designCondition': {
+            'endCondition': end_condition,
+            'beamSupport': beam_support,
+            'usageForVibration': usage_for_vibration,
+        },
+        'loads': {
+            'liveLoadConstruction': live_load_construction,
+            'deadLoadFinish': dead_load_finish,
+            'liveLoadPermanent': live_load_permanent,
+        },
+        'manualForces': {
+            'positiveMoment': manual_positive_moment,
+            'negativeMoment': manual_negative_moment,
+            'negativeMomentU': manual_negative_moment_U,
+            'shearForce': manual_shear_force,
+        },
+        'geometry': {
+            'beamLength': beam_length,
+            'spacing1': spacing1,
+            'spacing2': spacing2,
+        },
+    }
+
     # ==========================================================================
     # 2. 단면 생성
     # ==========================================================================
@@ -616,6 +692,7 @@ def _run_design_calculation(config):
     # ==========================================================================
     
     result = {
+        'parsedInputs': parsed_inputs,  # 파싱된 입력 데이터 추가
         'sectionInfo': {
             'hSection': h_section_name,
             'uSection': f"U-{int(U_height)}x{int(U_width)}x{U_thickness}",
@@ -647,36 +724,26 @@ def _run_design_calculation(config):
                 'requiredStrength': round(U_required_M_positive / 1e6, 2),
                 'nominalStrength': round(U_nominal_M_positive.elasticMomentStrength / 1e6, 2),
                 'designStrength': round(U_design_M_positive / 1e6, 2),
-                'ratio': round(U_required_M_positive / U_design_M_positive, 3) if U_design_M_positive > 0 else 0,
-                'check': 'OK' if U_moment_check_positive else 'NG',
             },
             'U_negative': {
                 'requiredStrength': round(U_required_M_negative / 1e6, 2),
                 'nominalStrength': round(U_nominal_M_negative.elasticMomentStrength / 1e6, 2),
                 'designStrength': round(U_design_M_negative / 1e6, 2),
-                'ratio': round(U_required_M_negative / U_design_M_negative, 3) if U_design_M_negative > 0 else 0,
-                'check': 'OK' if U_moment_check_negative else 'NG',
             },
             'U_shear': {
                 'requiredStrength': round(U_required_V / 1e3, 2),
                 'nominalStrength': round(U_nominal_V.nominalShearStrength / 1e3, 2),
                 'designStrength': round(U_design_V / 1e3, 2),
-                'ratio': round(U_required_V / U_design_V, 3) if U_design_V > 0 else 0,
-                'check': 'OK' if U_shear_check else 'NG',
             },
             'H_negative': {
                 'requiredStrength': round(H_required_M_negative / 1e6, 2),
                 'nominalStrength': round(H_nominal_M.elasticMomentStrength / 1e6, 2),
                 'designStrength': round(H_design_M_negative / 1e6, 2),
-                'ratio': round(H_required_M_negative / H_design_M_negative, 3) if H_design_M_negative > 0 else 0,
-                'check': 'OK' if H_moment_check_negative else 'NG',
             },
             'H_shear': {
                 'requiredStrength': round(H_required_V / 1e3, 2),
                 'nominalStrength': round(H_nominal_V.nominalShearStrength / 1e3, 2),
                 'designStrength': round(H_design_V / 1e3, 2),
-                'ratio': round(H_required_V / H_design_V, 3) if H_design_V > 0 else 0,
-                'check': 'OK' if H_shear_check else 'NG',
             },
             'deflection': {
                 'deflectionD1': round(deflection_D1, 2),
@@ -700,28 +767,20 @@ def _run_design_calculation(config):
                 'requiredStrength': round(Comp_required_M_positive / 1e6, 2),
                 'nominalStrength': round(Comp_nominal_M_positive / 1e6, 2),
                 'designStrength': round(Comp_design_M_positive / 1e6, 2),
-                'ratio': round(Comp_required_M_positive / Comp_design_M_positive, 3) if Comp_design_M_positive > 0 else 0,
-                'check': 'OK' if Comp_moment_check_positive else 'NG',
             },
             'U_negative': {
                 'requiredStrength': round(Comp_required_M_negative_U / 1e6, 2),
                 'nominalStrength': round(Comp_nominal_M_negative_U / 1e6, 2),
                 'designStrength': round(Comp_design_M_negative_U / 1e6, 2),
-                'ratio': round(Comp_required_M_negative_U / Comp_design_M_negative_U, 3) if Comp_design_M_negative_U > 0 else 0,
-                'check': 'OK' if Comp_moment_check_negative_U else 'NG',
             },
             'H_negative': {
                 'requiredStrength': round(Comp_required_M_negative_H / 1e6, 2),
                 'nominalStrength': round(Comp_nominal_M_negative_H / 1e6, 2),
                 'designStrength': round(Comp_design_M_negative_H / 1e6, 2),
-                'ratio': round(Comp_required_M_negative_H / Comp_design_M_negative_H, 3) if Comp_design_M_negative_H > 0 else 0,
-                'check': 'OK' if Comp_moment_check_negative_H else 'NG',
             },
             'shear': {
                 'requiredStrength': round(Comp_required_V / 1e3, 2),
                 'designStrength': round(U_design_V / 1e3, 2),
-                'ratio': round(Comp_required_V / U_design_V, 3) if U_design_V > 0 else 0,
-                'check': 'OK' if Comp_shear_check else 'NG',
             },
             'deflection': {
                 'compositeRatio': round(composite_ratio * 100, 1),
@@ -739,27 +798,8 @@ def _run_design_calculation(config):
                 'naturalFrequency': round(vibration.naturalFrequency, 2),
                 'maxAccelerationRatio': round(vibration.maxAccelerationRatio * 100, 2),
                 'accelerationLimit': round(vibration.accRatioLimit.get(usage_for_vibration, 0.5) * 100, 1),
-                'check': 'OK' if vibration.check else 'NG',
             },
         },
-        'cost': {
-            'weightSection1': round(cost_calc.weight_Section1 / 9800, 2),  # kgf -> kg
-            'weightSection2': round(cost_calc.weight_Section2 / 9800, 2),
-            'spliceWeight': round(cost_calc.bestoGirderSplice_weight / 9800, 2),
-            'topRebarWeight': round(cost_calc.topRebar_weight / 9800, 2),
-            'bottomRebarWeight': round(cost_calc.bottomRebar_weight / 9800, 2),
-            'angleWeight': round(cost_calc.angle_weight / 9800, 2),
-            'studCount': round(cost_calc.stud_number + cost_calc.section2_stud_Number, 0),
-            'concreteVolume': round(volumn_conc_in_U / 1e9, 2),
-            'totalCost': round(cost_calc.totalCost, 0),
-        },
-        'overallCheck': _get_overall_check([
-            U_moment_check_positive, U_moment_check_negative, U_shear_check,
-            H_moment_check_negative, H_shear_check, deflection_check_construction,
-            Comp_moment_check_positive, Comp_moment_check_negative_U, 
-            Comp_moment_check_negative_H, Comp_shear_check,
-            deflection_check_live, deflection_check_dead_live, vibration.check
-        ]),
     }
     
     return result

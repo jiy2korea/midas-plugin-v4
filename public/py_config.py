@@ -55,10 +55,10 @@ def get_default_design_inputs():
         "liveLoadConstruction": 2.5,
         "deadLoadFinish": 1.5,
         "liveLoadPermanent": 2.5,
-        "manualPositiveMoment": 0,
-        "manualNegativeMoment": 0,
-        "manualNegativeMomentU": 0,
-        "manualShearForce": 0,
+        "manualPositiveMoment": 500,
+        "manualNegativeMoment": 500,
+        "manualNegativeMomentU": 500,
+        "manualShearForce": 500,
 
         # 기하
         "span_length": 10000,

@@ -61,6 +61,7 @@ def  main():
     ShearConnector_height = 50
     studShearConnector_spacing = inputSheet.range('AA12').value
     angleShearConnector_spacing = inputSheet.range('AA13').value
+    studAnchorYieldStress = 450
 
     # 2. Material
     U_steel = inputSheet.range('I16').value
@@ -201,7 +202,7 @@ def  main():
         studAnchorArea = math.pi * (19/2)**2, # 스터드 지름 19mm
         f_ck = Concrete_compressiveStress,
         concreteElasticModulus = Concrete_elasticModulus,
-        studAnchorStrength = 400, # 스터드 항복강도 MPa
+        studAnchorStrength = studAnchorYieldStress, # 스터드 항복강도 MPa
     )
     
     angleAnchorStrength = library.AngleAnchorStrength(
@@ -358,6 +359,349 @@ def  main():
     )
     
     print('end of the check')
+
+    # ========================================================================
+    # [임시 기능] 텍스트 파일 생성 - 입력값과 결과값 확인용 (줄바꿈으로 구분)
+    # TODO: 나중에 삭제 예정
+    # ========================================================================
+    
+    # 객체를 평탄화하는 함수
+    def flatten_dict(obj, prefix='', sep='_'):
+        flattened = {}
+        for key, value in obj.items():
+            new_key = f'{prefix}{sep}{key}' if prefix else key
+            if isinstance(value, dict) and not isinstance(value, (list, tuple)):
+                flattened.update(flatten_dict(value, new_key, sep))
+            else:
+                flattened[new_key] = value
+        return flattened
+    
+    # 1. 파싱된 입력 데이터 딕셔너리 생성 (py_main.py와 동일한 구조)
+    parsed_inputs = {
+        'hSection': {
+            'sectionName': H_Section_List if H_Section_List else 'None',
+            'height': H_height,
+            'width': H_width,
+            'webThickness': H_Web_thickness,
+            'flangeThickness': H_Flange_thickness,
+            'bracketLength': H_length,
+        },
+        'uSection': {
+            'height': U_height,
+            'width': U_width,
+            'wingWidth': U_Wing_width,
+            'thickness': U_thickness,
+        },
+        'slab': {
+            'depth': Slab_depth,
+        },
+        'rebar': {
+            'top': {
+                'quantity': topRebarQuantity,
+                'diameter': topRebarDiameter,
+                'diameterStr': f'D{int(topRebarDiameter)}' if topRebarDiameter else '',
+                'area': topRebarArea if topRebarArea else 0,
+            },
+            'bottom': {
+                'quantity': bottomRebarQuantity,
+                'diameter': bottomRebarDiameter,
+                'diameterStr': f'D{int(bottomRebarDiameter)}' if bottomRebarDiameter else '',
+                'area': bottomRebarArea if bottomRebarArea else 0,
+            },
+            'yieldStress': ReBar_yieldStress,
+        },
+        'shearConnector': {
+            'studSpacing': studShearConnector_spacing if studShearConnector_spacing else 0,
+            'angleSpacing': angleShearConnector_spacing if angleShearConnector_spacing else 0,
+            'angleHeight': ShearConnector_height,
+            'studDiameter': 19,  # 하드코딩된 값
+            'studStrength': studAnchorYieldStress,
+        },
+        'steel': {
+            'elasticModulus': Steel_elasticModulus,
+            'hType': H_steel if H_steel else None,
+            'uType': U_steel if U_steel else None,
+            'fyH': H_steelYieldStress,
+            'fyU': Steel_yieldStress,
+        },
+        'concrete': {
+            'grade': Concrete_compressiveStress,  # 변수명은 다르지만 값
+            'fck': Concrete_compressiveStress,
+            'elasticModulus': Concrete_elasticModulus,
+        },
+        'designCondition': {
+            'endCondition': endCondition,
+            'beamSupport': beamSupport,
+            'usageForVibration': useageForVibration,
+        },
+        'loads': {
+            'liveLoadConstruction': liveLoad_construction,
+            'deadLoadFinish': deadLoad_finish,
+            'liveLoadPermanent': liveLoad_permanant,
+        },
+        'manualForces': {
+            'positiveMoment': manual_positiveMoment_Permanant,
+            'negativeMoment': manual_negativeMoment_Permanant,
+            'negativeMomentU': manual_negativeMoment_Permanant_U,
+            'shearForce': manual_shearForce_Permanant,
+        },
+        'geometry': {
+            'beamLength': beamLength,
+            'spacing1': spacing1,
+            'spacing2': spacing2,
+        },
+    }
+    
+    # 2. 결과 데이터 딕셔너리 생성 (py_main.py와 동일한 구조)
+    result = {
+        'sectionInfo': {
+            'hSection': H_Section_List if H_Section_List else 'None',
+            'uSection': f"U-{int(U_height)}x{int(U_width)}x{U_thickness}",
+            'hArea': round(H_section.area, 2),
+            'uArea': round(U_section.area, 2),
+            'hInertia': round(H_section.inertiaX, 0),
+            'uInertia': round(U_section.inertiaX, 0),
+            'hModulusX1': round(H_section.sectionModulusX1, 2),
+            'compositeInertia': round(compositeSection.inertiaX, 0),
+            'effectiveWidth': round(effectiveWidth, 2),
+        },
+        'materialInfo': {
+            'steelFyH': H_steelYieldStress,
+            'steelFyU': Steel_yieldStress,
+            'steelE': Steel_elasticModulus,
+            'concrete': Concrete_compressiveStress,
+            'fck': Concrete_compressiveStress,
+            'Ec': round(Concrete_elasticModulus, 0),
+            'fyr': ReBar_yieldStress,
+        },
+        'loads': {
+            'weightDeadLoad1': round(weightDeadLoad1, 3),
+            'weightDeadLoad2': round(weightDeadLoad2, 3),
+            'weightLiveLoad': round(weightLiveLoad, 3),
+            'weightConstructionLoad': round(weightConstructionLoad, 3),
+        },
+        'constructionStage': {
+            'U_positive': {
+                'requiredStrength': round(U_requiredMomentStrength_Construction_Positive / 1e6, 2),
+                'nominalStrength': round(U_nominalMomentStrength_Positive.elasticMomentStrength / 1e6, 2),
+                'designStrength': round(U_designMomentStrength_Positive / 1e6, 2),
+            },
+            'U_negative': {
+                'requiredStrength': round(U_requiredMomentStrength_Construction_Negative / 1e6, 2),
+                'nominalStrength': round(U_nominalMomentStrength_Negative.elasticMomentStrength / 1e6, 2),
+                'designStrength': round(U_designMomentStrength_Negative / 1e6, 2),
+            },
+            'U_shear': {
+                'requiredStrength': round(U_requiredShearStrength_construction / 1e3, 2),
+                'nominalStrength': round(U_nominalShearStrength.nominalShearStrength / 1e3, 2),
+                'designStrength': round(U_designShearStrength / 1e3, 2),
+            },
+            'H_negative': {
+                'requiredStrength': round(H_requiredMomentStrength_Construction_Negative / 1e6, 2),
+                'nominalStrength': round(H_nominalMomentStrength.elasticMomentStrength / 1e6, 2),
+                'designStrength': round(H_designMomentStrength_Construction_Negative / 1e6, 2),
+            },
+            'H_shear': {
+                'requiredStrength': round(H_requiredShearStrength_construction / 1e3, 2),
+                'nominalStrength': round(H_nominalShearStrength.nominalShearStrength / 1e3, 2),
+                'designStrength': round(H_designShearStrength / 1e3, 2),
+            },
+            'deflection': {
+                'deflectionD1': round(deflection_D1, 2),
+                'deflectionC': round(deflection_C, 2),
+                'totalDeflection': round(deflection_D1 + deflection_C, 2),
+                'limit': requiredDeflection_construction,
+                'check': 'OK' if deflectionCheck else 'NG',
+            },
+        },
+        'compositeStage': {
+            'shearConnector': {
+                'studCount': stud_count if studShearConnector_spacing != 0 else 0,
+                'studUnitStrength': round(studAnchorStrength / 1e3, 2),
+                'studTotalStrength': round(stud_strength / 1e3, 2) if studShearConnector_spacing != 0 else 0,
+                'angleCount': angle_count if angleShearConnector_spacing != 0 else 0,
+                'angleUnitStrength': round(angleAnchorStrength / 1e3, 2),
+                'angleTotalStrength': round(angle_strength / 1e3, 2) if angleShearConnector_spacing != 0 else 0,
+                'totalStrength': round(shearConnectorStrength / 1e3, 2),
+            },
+            'U_positive': {
+                'requiredStrength': round(Comp_requiredMomentStrength_Positive / 1e6, 2),
+                'nominalStrength': round(Comp_nominalMomentStrength_Positive / 1e6, 2),
+                'designStrength': round(Comp_designMomentStrength_Positive / 1e6, 2),
+            },
+            'U_negative': {
+                'requiredStrength': round(Comp_requiredMomentStrength_Negative / 1e6, 2),
+                'nominalStrength': round(Comp_nominalMomentStrength_Negative / 1e6, 2),
+                'designStrength': round(Comp_designMomentStrength_Negative / 1e6, 2),
+            },
+            'H_negative': {
+                'requiredStrength': round(H_requiredMomentStrength_Permanent_Negative / 1e6, 2),
+                'nominalStrength': round(H_nominalMomentStrength_Permanent_Negative / 1e6, 2),
+                'designStrength': round(H_designMomentStrength_Permanent_Negative / 1e6, 2),
+            },
+            'shear': {
+                'requiredStrength': round(U_requiredShearStrength_permanent / 1e3, 2),
+                'designStrength': round(U_designShearStrength / 1e3, 2),
+            },
+            'deflection': {
+                'compositeRatio': round(compositeRatio * 100, 1),
+                'effectiveInertia': round(Comp_effctiveInertia, 0),
+                'deflectionLive': round(deflection_LiveLoad, 2),
+                'deflectionLiveLimit': round(beamLength / 360, 2),
+                'deflectionLiveCheck': 'OK' if deflectionCheck_LiveLoad else 'NG',
+                'deflectionDeadLive': round(deflection_DeadNLive_Support if beamSupport == 1 else deflection_DeadNLive_NoSupport, 2),
+                'deflectionDeadLiveLimit': round(beamLength / 240, 2),
+                'deflectionDeadLiveCheck': 'OK' if (deflectionCheck_DeadNLive_Support if beamSupport == 1 else deflectionCheck_DeadNLive_NoSupport) else 'NG',
+            },
+            'vibration': {
+                'naturalFrequency': round(vibration.naturalFrequency, 2),
+                'maxAccelerationRatio': round(vibration.maxAccelerationRatio * 100, 2),
+                'accelerationLimit': round(vibration.accRatioLimit[useageForVibration] * 100, 1) if useageForVibration in vibration.accRatioLimit else 50.0,
+            },
+        },
+    }
+    
+    # 3. 지정된 순서대로 키 목록 정의
+    ordered_keys = [
+        'INPUT_hSection_sectionName',
+        'INPUT_hSection_height',
+        'INPUT_hSection_width',
+        'INPUT_hSection_webThickness',
+        'INPUT_hSection_flangeThickness',
+        'INPUT_hSection_bracketLength',
+        'INPUT_uSection_height',
+        'INPUT_uSection_width',
+        'INPUT_uSection_wingWidth',
+        'INPUT_uSection_thickness',
+        'INPUT_slab_depth',
+        'INPUT_rebar_top_quantity',
+        'INPUT_rebar_top_diameter',
+        'INPUT_rebar_top_diameterStr',
+        'INPUT_rebar_top_area',
+        'INPUT_rebar_bottom_quantity',
+        'INPUT_rebar_bottom_diameter',
+        'INPUT_rebar_bottom_diameterStr',
+        'INPUT_rebar_bottom_area',
+        'INPUT_rebar_yieldStress',
+        'INPUT_shearConnector_studSpacing',
+        'INPUT_shearConnector_angleSpacing',
+        'INPUT_shearConnector_angleHeight',
+        'INPUT_shearConnector_studDiameter',
+        'INPUT_shearConnector_studStrength',
+        'INPUT_steel_elasticModulus',
+        'INPUT_steel_hType',
+        'INPUT_steel_uType',
+        'INPUT_steel_fyH',
+        'INPUT_steel_fyU',
+        'INPUT_concrete_grade',
+        'INPUT_concrete_fck',
+        'INPUT_concrete_elasticModulus',
+        'INPUT_designCondition_endCondition',
+        'INPUT_designCondition_beamSupport',
+        'INPUT_designCondition_usageForVibration',
+        'INPUT_loads_liveLoadConstruction',
+        'INPUT_loads_deadLoadFinish',
+        'INPUT_loads_liveLoadPermanent',
+        'INPUT_manualForces_positiveMoment',
+        'INPUT_manualForces_negativeMoment',
+        'INPUT_manualForces_negativeMomentU',
+        'INPUT_manualForces_shearForce',
+        'INPUT_geometry_beamLength',
+        'INPUT_geometry_spacing1',
+        'INPUT_geometry_spacing2',
+        'OUTPUT_sectionInfo_hSection',
+        'OUTPUT_sectionInfo_uSection',
+        'OUTPUT_sectionInfo_hArea',
+        'OUTPUT_sectionInfo_uArea',
+        'OUTPUT_sectionInfo_hInertia',
+        'OUTPUT_sectionInfo_uInertia',
+        'OUTPUT_sectionInfo_hModulusX1',
+        'OUTPUT_sectionInfo_compositeInertia',
+        'OUTPUT_sectionInfo_effectiveWidth',
+        'OUTPUT_materialInfo_steelFyH',
+        'OUTPUT_materialInfo_steelFyU',
+        'OUTPUT_materialInfo_steelE',
+        'OUTPUT_materialInfo_concrete',
+        'OUTPUT_materialInfo_fck',
+        'OUTPUT_materialInfo_Ec',
+        'OUTPUT_materialInfo_fyr',
+        'OUTPUT_loads_weightDeadLoad1',
+        'OUTPUT_loads_weightDeadLoad2',
+        'OUTPUT_loads_weightLiveLoad',
+        'OUTPUT_loads_weightConstructionLoad',
+        'OUTPUT_constructionStage_U_positive_requiredStrength',
+        'OUTPUT_constructionStage_U_positive_nominalStrength',
+        'OUTPUT_constructionStage_U_positive_designStrength',
+        'OUTPUT_constructionStage_U_negative_requiredStrength',
+        'OUTPUT_constructionStage_U_negative_nominalStrength',
+        'OUTPUT_constructionStage_U_negative_designStrength',
+        'OUTPUT_constructionStage_U_shear_requiredStrength',
+        'OUTPUT_constructionStage_U_shear_nominalStrength',
+        'OUTPUT_constructionStage_U_shear_designStrength',
+        'OUTPUT_constructionStage_H_negative_requiredStrength',
+        'OUTPUT_constructionStage_H_negative_nominalStrength',
+        'OUTPUT_constructionStage_H_negative_designStrength',
+        'OUTPUT_constructionStage_H_shear_requiredStrength',
+        'OUTPUT_constructionStage_H_shear_nominalStrength',
+        'OUTPUT_constructionStage_H_shear_designStrength',
+        'OUTPUT_constructionStage_deflection_deflectionD1',
+        'OUTPUT_constructionStage_deflection_deflectionC',
+        'OUTPUT_constructionStage_deflection_totalDeflection',
+        'OUTPUT_constructionStage_deflection_limit',
+        'OUTPUT_constructionStage_deflection_check',
+        'OUTPUT_compositeStage_shearConnector_studCount',
+        'OUTPUT_compositeStage_shearConnector_studUnitStrength',
+        'OUTPUT_compositeStage_shearConnector_studTotalStrength',
+        'OUTPUT_compositeStage_shearConnector_angleCount',
+        'OUTPUT_compositeStage_shearConnector_angleUnitStrength',
+        'OUTPUT_compositeStage_shearConnector_angleTotalStrength',
+        'OUTPUT_compositeStage_shearConnector_totalStrength',
+        'OUTPUT_compositeStage_U_positive_requiredStrength',
+        'OUTPUT_compositeStage_U_positive_nominalStrength',
+        'OUTPUT_compositeStage_U_positive_designStrength',
+        'OUTPUT_compositeStage_U_negative_requiredStrength',
+        'OUTPUT_compositeStage_U_negative_nominalStrength',
+        'OUTPUT_compositeStage_U_negative_designStrength',
+        'OUTPUT_compositeStage_H_negative_requiredStrength',
+        'OUTPUT_compositeStage_H_negative_nominalStrength',
+        'OUTPUT_compositeStage_H_negative_designStrength',
+        'OUTPUT_compositeStage_shear_requiredStrength',
+        'OUTPUT_compositeStage_shear_designStrength',
+        'OUTPUT_compositeStage_deflection_compositeRatio',
+        'OUTPUT_compositeStage_deflection_effectiveInertia',
+        'OUTPUT_compositeStage_deflection_deflectionLive',
+        'OUTPUT_compositeStage_deflection_deflectionLiveLimit',
+        'OUTPUT_compositeStage_deflection_deflectionLiveCheck',
+        'OUTPUT_compositeStage_deflection_deflectionDeadLive',
+        'OUTPUT_compositeStage_deflection_deflectionDeadLiveLimit',
+        'OUTPUT_compositeStage_deflection_deflectionDeadLiveCheck',
+        'OUTPUT_compositeStage_vibration_naturalFrequency',
+        'OUTPUT_compositeStage_vibration_maxAccelerationRatio',
+        'OUTPUT_compositeStage_vibration_accelerationLimit',
+    ]
+    
+    # 4. 입력값과 결과값 평탄화
+    input_flat = flatten_dict(parsed_inputs, 'INPUT')
+    result_flat = flatten_dict(result, 'OUTPUT')
+    
+    # 5. 지정된 순서대로 텍스트 파일 생성 (값만 저장)
+    lines = []
+    for key in ordered_keys:
+        value = input_flat.get(key) if key.startswith('INPUT_') else result_flat.get(key, '')
+        value_str = '' if value is None else str(value)
+        lines.append(value_str)  # 키 없이 값만 저장
+    
+    # 5. 파일 저장
+    from datetime import datetime
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    filename = f'design_calculation_{timestamp}.txt'
+    filepath = os.path.join(os.path.dirname(__file__), filename)
+    
+    with open(filepath, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(lines))
+    
+    print(f'텍스트 파일이 생성되었습니다: {filepath}')
+    # ========================================================================
 
     # -------------- 에러 메세지 --------------
     errorMessage = []
