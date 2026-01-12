@@ -5,8 +5,6 @@
 
 import React, { useState } from 'react';
 import './App.css';
-import { getMemberStressData, getMemberGeometryData } from './data/memberData';
-import { performCalculation, CalculationInput } from './utils/calculation';
 import { checkPyScriptReady } from './utils_pyscript';
 
 // H형강 리스트 (match_list.tsv 기반)
@@ -82,11 +80,7 @@ const App = () => {
   // Search Satisfied Section 버튼 핸들러
   const handleSearch = async () => {
     try {
-      // 1. 드롭다운에서 선택한 단면 정보 가져오기
-      const stressData = getMemberStressData(selectedMember);
-      const geometryData = getMemberGeometryData(selectedMember);
-
-      // 2. Python 함수에 전달할 입력 데이터 준비
+      // 1 Python 함수에 전달할 입력 데이터 준비
       const pythonInput = {
         selectedMember,
         h_bracket_length: 1700,
@@ -111,10 +105,9 @@ const App = () => {
         liveLoadConstruction: '2.5', // 기본값
         deadLoadFinish: '1.5', // 기본값
         liveLoadPermanent: '2.5', // 기본값
-        span_length: geometryData.length * 1000, // m -> mm 변환
       };
 
-      // 3. Python 함수 호출
+      // 2. Python 함수 호출
       const result = await new Promise<any>((resolve, reject) => {
         checkPyScriptReady(() => {
           try {
@@ -132,14 +125,14 @@ const App = () => {
         });
       });
 
-      // 4. 에러 체크
+      // 3. 에러 체크
       if (result.error) {
         console.error('Python 계산 오류:', result.error);
         alert(`계산 중 오류가 발생했습니다: ${result.error}`);
         return;
       }
 
-      // 5. 결과 출력
+      // 4. 결과 출력
       // console.log('========================================');
       // console.log('Python 설계강도 계산 결과');
       // console.log('========================================');
@@ -151,7 +144,7 @@ const App = () => {
       // console.log('전체 검토:', result.overallCheck);
       // console.log('========================================');
 
-      // 6. UI 업데이트 (결과를 테이블에 표시)
+      // 5. UI 업데이트 (결과를 테이블에 표시)
       // required/design 비율 계산 헬퍼 함수 (소수점 2째자리까지만)
       const calcRatio = (required: number | undefined, design: number | undefined): number => {
         if (!design || design === 0) return 0;
@@ -201,7 +194,7 @@ const App = () => {
       }];
       setSectionList(sectionData);
 
-      // 7. 결과를 test 폴더에 저장 (탭으로 구분된 데이터 파일)
+      // 6. 결과를 test 폴더에 저장 (탭으로 구분된 데이터 파일)
       // saveResultsToFile(result, pythonInput);
 
       // ========================================================================
